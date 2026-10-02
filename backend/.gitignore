@@ -1,0 +1,15 @@
+node_modules/
+.env
+.env.local
+.env.test.local
+.env.backup-before-fix
+logs/*.log
+uploads/*
+!uploads/.gitkeep
+# Files the test suite writes; never part of the repo or the real uploads.
+uploads-test/
+coverage/
+*.tmp
+
+# Output of npm run security:probe.
+security-report.json
