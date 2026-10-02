@@ -27,9 +27,18 @@ services:
       # refuse to open the existing data directory.
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     volumes:
+      # Mounted at /var/lib/postgresql, NOT at .../data.
+      #
+      # The Postgres 18 images changed this. They now store data in a
+      # major-version subdirectory (/var/lib/postgresql/18/docker) so that
+      # pg_upgrade --link can work across a major version without crossing a
+      # mount-point boundary. Mounting the old .../data path makes the server
+      # find data where it no longer looks, and it exits at startup rather
+      # than risk touching it.
+      #
       # Named volume, not a bind mount: this is the entire business record and
       # it must survive `docker compose down` and image rebuilds.
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
     healthcheck:
       # `pg_isready` alone returns true while the server is still starting up
       # during initdb, so the user and database are checked explicitly.
