@@ -4,6 +4,7 @@
 # Deployment configuration. Holds the database password, both JWT secrets and
 # the SMTP credentials - it must never reach the repository. The committed
 # template beside it is .env.docker.example.
+.env
 .env.docker
 .env.docker.*
 !.env.docker.example

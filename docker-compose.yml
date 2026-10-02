@@ -1,6 +1,12 @@
 # ServiceSetu - local server deployment
 #
-#   docker compose --env-file .env.docker up -d --build
+#   docker compose up -d --build
+#
+# Configuration comes from `.env` in this directory. That exact name matters:
+# compose reads it automatically for every command. Calling it anything else
+# means passing --env-file to `up`, `logs`, `ps` and the rest, and forgetting
+# it on any one of them fails with a variable-interpolation error rather than
+# anything that points at the real cause.
 #
 # Three services on one private network. Only the web container publishes a
 # port; the API and the database are reachable from inside the network only,
@@ -47,7 +53,7 @@ services:
       context: ./backend
     image: servicesetu-api:latest
     restart: "no"
-    env_file: .env.docker
+    env_file: .env
     environment:
       DB_HOST: db
       NODE_ENV: production
@@ -66,7 +72,7 @@ services:
       context: ./backend
     image: servicesetu-api:latest
     restart: unless-stopped
-    env_file: .env.docker
+    env_file: .env
     environment:
       DB_HOST: db
       NODE_ENV: production

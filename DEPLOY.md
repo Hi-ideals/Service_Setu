@@ -44,10 +44,10 @@ cd Service_Setu
 ## 2. Write the configuration
 
 ```bash
-cp .env.docker.example .env.docker
+cp .env.docker.example .env
 ```
 
-Open `.env.docker` and change four things. Everything else has a working
+Open `.env` and change four things. Everything else has a working
 default.
 
 **Generate two different secrets:**
@@ -71,12 +71,17 @@ and Gmail drops the message with no bounce — this has already caught us once.
 **Leave `COOKIE_SECURE=false` alone while you are on HTTP.** It is explained in
 §7 and it is the one setting that will silently break sign-in.
 
-`.env.docker` is already in `.gitignore`. Keep it that way.
+The name `.env` matters: compose reads it automatically for every command.
+Call it anything else and `logs`, `ps` and `down` all need `--env-file`,
+and forgetting it on one of them gives a variable-interpolation error that
+points nowhere near the real problem.
+
+`.env` is already in `.gitignore`. Keep it that way.
 
 ## 3. Build and start
 
 ```bash
-docker compose --env-file .env.docker up -d --build
+docker compose up -d --build
 ```
 
 First run takes a few minutes: it pulls Postgres and nginx, installs
@@ -155,7 +160,7 @@ HTTPS, and leaving it false throws away protection you have paid for.
 
 ```bash
 git pull
-docker compose --env-file .env.docker up -d --build
+docker compose up -d --build
 ```
 
 Migrations run automatically on every `up`. Seeding is idempotent — it upserts
@@ -203,7 +208,7 @@ docker compose down -v        # DESTROYS the database and every KYC document
 
 **`web` is up but the API 502s** — the API is not healthy yet, or it crashed.
 `docker compose logs api`. A boot failure is almost always a missing or
-malformed value in `.env.docker`; the API refuses to start rather than run
+malformed value in `.env`; the API refuses to start rather than run
 misconfigured, and says which variable.
 
 **Sign-in bounces straight back to the login page** — `COOKIE_SECURE`. See §7.
@@ -212,7 +217,7 @@ misconfigured, and says which variable.
 start. Read `docker compose logs migrate`. The migration runner is checksummed,
 so an edited migration that has already run is refused on purpose.
 
-**Port 80 already in use** — set `WEB_PORT=8080` in `.env.docker` and reach the
+**Port 80 already in use** — set `WEB_PORT=8080` in `.env` and reach the
 site at `http://100.99.97.110:8080`.
 
 **Uploads fail with 413** — nginx caps the body at 10 MB and the API at
