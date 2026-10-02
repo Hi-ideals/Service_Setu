@@ -211,6 +211,12 @@ docker compose down -v        # DESTROYS the database and every KYC document
 malformed value in `.env`; the API refuses to start rather than run
 misconfigured, and says which variable.
 
+**Registration or sign-in fails with "Origin ... is not allowed"** —
+`CORS_ORIGINS` in `.env` does not match the address in the browser's bar. An
+origin is scheme + host + port and they are compared exactly, so a site on
+`:8082` needs `CORS_ORIGINS=http://100.99.97.110:8082`. Fix it, then
+`docker compose up -d api`.
+
 **Sign-in bounces straight back to the login page** — `COOKIE_SECURE`. See §7.
 
 **`migrate` exited non-zero** — the schema was not applied and `api` will not
