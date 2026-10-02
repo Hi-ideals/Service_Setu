@@ -16,6 +16,7 @@
     "migrate:down": "node src/db/migrate.js down",
     "db:create": "node src/db/createDatabase.js",
     "seed": "node src/db/seed.js",
+    "seed:catalogue": "node src/db/seed.js --catalogue-only",
     "db:reset": "node src/db/migrate.js reset && node src/db/migrate.js up && node src/db/seed.js",
     "security:probe": "node scripts/security-probe.mjs security-report.json",
     "test": "node --env-file-if-exists=.env.test --test --test-concurrency=1 tests/*.test.js"

@@ -162,12 +162,25 @@ async function seedProviders(tx, passwordHash, adminId) {
   return count;
 }
 
-export async function seed() {
+/**
+ * Seeds the database.
+ *
+ * `catalogueOnly` writes the platform settings and the service catalogue and
+ * stops there. It exists for a real deployment: the demo accounts below all
+ * share one published password, which is fine on a laptop and unacceptable on
+ * a machine other people can reach. A deployment seeds the catalogue, then the
+ * operator registers the first admin themselves.
+ */
+export async function seed({ catalogueOnly = false } = {}) {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, env.BCRYPT_ROUNDS);
 
   const result = await withTransaction(async (tx) => {
     const settings = await seedSettings(tx);
     const categoryCount = await seedCategories(tx);
+
+    if (catalogueOnly) {
+      return { settings, categoryCount, providerCount: 0, adminId: null, customerId: null };
+    }
 
     const admin = await upsertUser(tx, {
       role: 'admin',
@@ -201,17 +214,26 @@ export async function seed() {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  seed()
+  const catalogueOnly =
+    process.argv.includes('--catalogue-only') || process.env.SEED_MODE === 'catalogue';
+
+  seed({ catalogueOnly })
     .then(async (r) => {
       console.log('\n  Seed complete');
       console.log('  ------------------------------------------');
       console.log('  platform settings : ' + r.settings);
       console.log('  service categories: ' + r.categoryCount);
       console.log('  demo providers    : ' + r.providerCount);
-      console.log('\n  Demo accounts (password: ' + DEMO_PASSWORD + ')');
-      console.log('    admin    : admin@servicesetu.in');
-      console.log('    customer : customer@servicesetu.in');
-      console.log('    providers: plumber@ / electrician@ / acrepair@ / carpenter@servicesetu.in');
+      if (r.adminId === null) {
+        console.log('\n  Catalogue only - no accounts were created.');
+        console.log('  Register your admin through the site, then promote it with:');
+        console.log("    UPDATE users SET role = 'admin' WHERE email = 'you@example.com';");
+      } else {
+        console.log('\n  Demo accounts (password: ' + DEMO_PASSWORD + ')');
+        console.log('    admin    : admin@servicesetu.in');
+        console.log('    customer : customer@servicesetu.in');
+        console.log('    providers: plumber@ / electrician@ / acrepair@ / carpenter@servicesetu.in');
+      }
       await pool.end();
     })
     .catch(async (err) => {

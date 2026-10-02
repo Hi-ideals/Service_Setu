@@ -36,6 +36,20 @@ const schema = z.object({
   DB_SSL: bool(false),
   DB_POOL_MAX: num(10),
 
+  /**
+   * Whether the refresh cookie carries the Secure attribute.
+   *
+   * It must be true wherever the site is served over HTTPS, and it CANNOT be
+   * true over plain HTTP: the browser silently refuses to store a Secure
+   * cookie on an insecure origin, so sign-in appears to work and then the
+   * session vanishes on the next page load, with nothing in any log.
+   *
+   * Left unset it follows NODE_ENV, which is the right default. It exists so
+   * a deployment on a trusted private network over HTTP can turn it off
+   * deliberately rather than discovering the problem through a bug report.
+   */
+  COOKIE_SECURE: bool(undefined),
+
   JWT_ACCESS_SECRET: z.string().min(16, 'JWT_ACCESS_SECRET must be at least 16 characters'),
   JWT_REFRESH_SECRET: z.string().min(16, 'JWT_REFRESH_SECRET must be at least 16 characters'),
   JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
@@ -156,6 +170,8 @@ export const env = {
   isDev: raw.NODE_ENV === 'development',
   isTest: raw.NODE_ENV === 'test',
   isProd: raw.NODE_ENV === 'production',
+  // Falls back to NODE_ENV when COOKIE_SECURE is not set.
+  cookieSecure: raw.COOKIE_SECURE ?? raw.NODE_ENV === 'production',
   corsOrigins: raw.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean),
   // Quiet by default while developing, complete by default in production.
   logHttp: raw.LOG_HTTP ?? (raw.NODE_ENV === 'development' ? 'errors' : 'all'),

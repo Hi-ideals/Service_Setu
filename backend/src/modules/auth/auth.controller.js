@@ -14,8 +14,12 @@ const COOKIE_NAME = 'sst_refresh';
 
 const cookieOptions = (expiresAt) => ({
   httpOnly: true,
-  secure: env.isProd,
-  sameSite: env.isProd ? 'strict' : 'lax',
+  // Driven by COOKIE_SECURE, which defaults to NODE_ENV. See the note on it
+  // in config/env.js: a Secure cookie over plain HTTP is dropped silently.
+  secure: env.cookieSecure,
+  // SameSite=None would require Secure, so an insecure deployment stays on
+  // Lax. Lax still blocks the cross-site POST that CSRF depends on.
+  sameSite: env.cookieSecure ? 'strict' : 'lax',
   path: '/',
   expires: expiresAt ? new Date(expiresAt) : undefined,
 });
