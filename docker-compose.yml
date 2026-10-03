@@ -115,6 +115,24 @@ services:
       api:
         condition: service_healthy
 
+  # ----------------------------------------------------------- tunnel
+  # Publishes the site at a real domain without a public IP, without opening a
+  # port on the router, and without the server being reachable directly from
+  # the internet. cloudflared dials out to Cloudflare and traffic comes back
+  # down that connection, so the box stays closed to inbound entirely - which
+  # also means it works behind CGNAT, where port forwarding simply cannot.
+  #
+  # Only runs when asked for:
+  #   docker compose --profile tunnel up -d
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    profiles: ["tunnel"]
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
+    depends_on:
+      web:
+        condition: service_healthy
+
 volumes:
   pgdata:
   uploads:
