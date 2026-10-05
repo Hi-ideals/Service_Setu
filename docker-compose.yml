@@ -49,8 +49,8 @@ services:
       start_period: 30s
     # Not published. Uncomment only to connect a GUI client from the host, and
     # remember it then listens on every interface.
-    # ports:
-    #   - "5432:5432"
+       ports:
+      - "127.0.0.1:15432:5432"
 
   # --------------------------------------------------------------- migrate
   # Runs once per `up`, applies pending migrations, seeds the catalogue, exits.
