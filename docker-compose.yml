@@ -87,9 +87,18 @@ services:
       NODE_ENV: production
       PORT: 5000
     volumes:
-      # KYC documents. A named volume because losing these means losing the
-      # evidence behind every verification decision ever made.
-      - uploads:/app/uploads
+      # KYC documents, in a folder on the host rather than a named volume.
+      #
+      # A named volume keeps them safe but hides them under
+      # /var/lib/docker/volumes, which makes them awkward to inspect and
+      # awkward to back up with ordinary tools. A bind mount puts them
+      # somewhere you can see, tar and rsync like any other directory.
+      #
+      # The folder must exist and be writable by uid 1000 before the first
+      # start - the container drops to the `node` user, and Docker creates a
+      # missing bind-mount path as root, which the container then cannot write
+      # to. DEPLOY.md has the one-line mkdir.
+      - ${UPLOADS_PATH:-./data/uploads}:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -134,5 +143,6 @@ services:
         condition: service_healthy
 
 volumes:
+  # The database stays a named volume: nothing outside Postgres should be
+  # reading or writing those files, so there is no reason to expose them.
   pgdata:
-  uploads:

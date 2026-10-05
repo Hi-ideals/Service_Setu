@@ -29,3 +29,7 @@ Thumbs.db
 *.pem
 *.crt
 *.pfx
+
+# Uploaded documents on a deployment. Real customer identity papers - they
+# belong in backups, never in a repository.
+data/
