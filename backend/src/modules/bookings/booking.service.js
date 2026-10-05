@@ -319,13 +319,15 @@ export async function createBooking(customerId, payload) {
   // Prices come from the provider's published rates, never from the client.
   const quotedAmountMinor = items.reduce((sum, item) => sum + item.priceMinor, 0);
 
-  // One trip, one call-out fee. Charging it per service would bill a customer
-  // twice for a single visit, so the highest of the chosen services' visit
-  // charges applies and the rest are absorbed.
-  const visitChargeMinor = offerings.reduce(
-    (max, o) => Math.max(max, Number(o.visit_charge_minor ?? 0)),
-    0,
-  );
+  /**
+   * The visit charge was withdrawn from the product: a booking is quoted at
+   * the sum of its services and nothing else.
+   *
+   * Zero rather than removed. The column still carries the charge on bookings
+   * taken while the feature existed, and their invoices have to keep adding
+   * up - rewriting those would change what a customer was already billed.
+   */
+  const visitChargeMinor = 0;
 
   // The booking-level rate is the price-weighted average of its items, which
   // is the rate that reproduces the sum of the per-item commissions when

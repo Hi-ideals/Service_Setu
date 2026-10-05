@@ -24,7 +24,10 @@ export const serviceSchema = z.object({
   categoryId: z.string().uuid('Choose a valid service category'),
   priceMinor: minor,
   pricingUnit: z.enum(['per_visit', 'per_hour', 'per_unit', 'quote_on_inspection']).optional(),
-  visitChargeMinor: minor.default(0),
+  // The visit charge was withdrawn from the product. Any value a client still
+  // sends is accepted and ignored rather than rejected, so an older cached
+  // build of the app does not start failing to save an offering.
+  visitChargeMinor: minor.default(0).optional(),
   isActive: z.coerce.boolean().default(true),
 });
 

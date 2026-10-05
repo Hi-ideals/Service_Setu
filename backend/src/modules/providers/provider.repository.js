@@ -94,7 +94,8 @@ export function upsertService(providerId, d) {
        visit_charge_minor = EXCLUDED.visit_charge_minor,
        is_active = EXCLUDED.is_active
      RETURNING id, category_id, price_minor, pricing_unit, visit_charge_minor, is_active`,
-    [providerId, d.categoryId, d.priceMinor, d.pricingUnit, d.visitChargeMinor, d.isActive],
+    // Visit charge withdrawn from the product: always stored as zero.
+    [providerId, d.categoryId, d.priceMinor, d.pricingUnit, 0, d.isActive],
   );
 }
 

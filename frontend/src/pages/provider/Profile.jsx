@@ -77,7 +77,6 @@ export default function Profile() {
       api.put('/providers/me/services', {
         categoryId: values.categoryId,
         priceMinor: Math.round(Number(values.price) * 100),
-        visitChargeMinor: Math.round(Number(values.visitCharge || 0) * 100),
       }),
     onSuccess: () => {
       refresh();
@@ -328,15 +327,6 @@ export default function Profile() {
             {...serviceForm.register('price', { required: 'Enter your price' })}
           />
 
-          <Input
-            label="Visit charge"
-            type="number"
-            inputMode="decimal"
-            min={0}
-            suffix="rupees"
-            hint="Optional. Charged on top for travelling out."
-            {...serviceForm.register('visitCharge')}
-          />
 
           <div className="flex gap-2">
             <Button type="button" variant="secondary" onClick={() => setServiceOpen(false)} className="flex-1">
