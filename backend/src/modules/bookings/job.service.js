@@ -97,6 +97,26 @@ async function settleAmounts(booking, requestedFinalMinor) {
   if (finalMinor < 0) throw ApiError.badRequest('The final amount cannot be negative');
 
   /**
+   * The quote is a floor as well as a promise.
+   *
+   * A provider could otherwise agree one figure with the customer, enter a
+   * lower one here, and take the difference in cash - the customer has no
+   * reason to object, because they pay less on the platform, and the only
+   * loser is the commission. Holding the final amount at or above the quote
+   * removes the incentive outright.
+   *
+   * The cost is real: a job that genuinely turns out smaller cannot be
+   * discounted, and has to be cancelled and rebooked instead. That trade was
+   * made deliberately.
+   */
+  if (finalMinor < quoted) {
+    throw ApiError.badRequest(
+      'The final amount cannot be less than the ' + money.format(quoted) +
+        ' quoted for this booking.',
+    );
+  }
+
+  /**
    * The ceiling is the whole visit's, not one service's.
    *
    * This read the cap of `booking.category_id` alone. On a booking covering a

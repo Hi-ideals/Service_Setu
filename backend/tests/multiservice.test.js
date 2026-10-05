@@ -124,10 +124,34 @@ test('Multi-service bookings', async (t) => {
     assert.equal(row.minutes, a.estimated_minutes + b.estimated_minutes);
   });
 
-  await t.test('the call-out fee is charged once, not once per service', async () => {
+  await t.test('no call-out fee is added - the feature was withdrawn', async () => {
+    // This asserted that the highest of the chosen services' visit charges was
+    // applied once. The visit charge has since been removed from the product:
+    // a booking is quoted at the sum of its services and nothing else.
+    //
+    // The column survives because bookings taken while the charge existed
+    // still carry it, and their invoices have to keep adding up.
     const row = await queryOne('SELECT visit_charge_minor FROM bookings WHERE id = $1', [twoServiceId]);
-    const highest = Math.max(Number(a.visit_charge_minor ?? 0), Number(b.visit_charge_minor ?? 0));
-    assert.equal(Number(row.visit_charge_minor), highest);
+    assert.equal(Number(row.visit_charge_minor), 0, 'a new booking carries no visit charge');
+  });
+
+  await t.test('the quote is exactly the sum of the chosen services', async () => {
+    const items = await queryMany(
+      'SELECT price_minor FROM booking_items WHERE booking_id = $1',
+      [twoServiceId],
+    );
+    const sum = items.reduce((total, i) => total + Number(i.price_minor), 0);
+
+    const booking = await queryOne(
+      'SELECT quoted_amount_minor, visit_charge_minor FROM bookings WHERE id = $1',
+      [twoServiceId],
+    );
+    assert.equal(Number(booking.quoted_amount_minor), sum);
+    assert.equal(
+      Number(booking.quoted_amount_minor) + Number(booking.visit_charge_minor),
+      sum,
+      'nothing is added on top of the services',
+    );
   });
 
   await t.test('commission is weighted by what each service costs', async () => {
@@ -316,7 +340,12 @@ test('Multi-service bookings', async (t) => {
     assert.equal(res.status, 201, JSON.stringify(res.body?.error ?? ''));
 
     const id = res.body.data.id;
-    const total = res.body.data.pricing.quotedMinor;
+    // The full total is the services plus the visit charge. Reading only
+    // `quotedMinor` left the visit charge out, so this completed for less than
+    // the customer owed - which passed only because nothing held the final
+    // amount at or above the quote.
+    const total =
+      res.body.data.pricing.quotedMinor + (res.body.data.pricing.visitChargeMinor ?? 0);
 
     await request(port, 'POST', '/api/v1/bookings/' + id + '/accept', pAuth);
 
@@ -338,6 +367,20 @@ test('Multi-service bookings', async (t) => {
     });
     assert.equal(code.status, 200);
 
+    // The floor, on a booking that is still in progress: a rupee under the
+    // agreed total is refused. A provider who could settle below the quote
+    // could agree one figure with the customer, enter a lower one here and
+    // take the difference in cash - the customer pays less and has no reason
+    // to complain, and the only loser is the commission.
+    const under = await request(port, 'POST', '/api/v1/bookings/' + id + '/complete', {
+      ...pAuth,
+      body: { otp: code.body.data.devCode, finalAmountMinor: total - 100 },
+    });
+    assert.equal(under.status, 400, 'settling below the quote must be refused');
+    assert.match(under.body.error.message, /cannot be less than/);
+
+    // A refused attempt must not burn the code: the honest completion below
+    // has to still work, or a mistyped amount would strand the job.
     const done = await request(port, 'POST', '/api/v1/bookings/' + id + '/complete', {
       ...pAuth,
       body: { otp: code.body.data.devCode, finalAmountMinor: total },

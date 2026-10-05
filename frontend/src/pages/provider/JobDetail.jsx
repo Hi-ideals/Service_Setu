@@ -32,12 +32,22 @@ export default function JobDetail() {
   const [completeOpen, setCompleteOpen] = useState(false);
   const [otp, setOtp] = useState('');
   const [finalAmount, setFinalAmount] = useState('');
+
   const [codeSent, setCodeSent] = useState(false);
 
   const { data: booking, isLoading } = useQuery({
     queryKey: keys.bookings.detail(id),
     queryFn: async () => (await api.get('/bookings/' + id)).data,
   });
+
+  /**
+   * What the customer actually agreed to pay: the quoted services plus the
+   * visit charge. `pricing.quoted` is the services alone, so showing it here
+   * invited the provider to type a figure the server then refused for being
+   * below the quote.
+   */
+  const agreedTotal =
+    (booking?.pricing?.quoted ?? 0) + ((booking?.pricing?.visitChargeMinor ?? 0) / 100);
 
   const { data: tracking } = useQuery({
     queryKey: keys.bookings.tracking(id),
@@ -375,13 +385,15 @@ export default function JobDetail() {
             label="Final amount"
             type="number"
             inputMode="decimal"
-            placeholder={String(booking.pricing.quoted)}
+            placeholder={String(agreedTotal)}
+            min={agreedTotal}
             suffix="rupees"
             value={finalAmount}
             onChange={(e) => setFinalAmount(e.target.value)}
             hint={
-              'Leave blank to charge the quoted ' + money(booking.pricing.quoted) +
-              '. The customer sees this amount in the email with their code, before they read it out.'
+              'Leave blank to charge the agreed ' + money(agreedTotal) +
+              '. You can charge more if the job grew, up to the category ceiling, but not less. ' +
+              'The customer sees this amount in the email with their code, before they read it out.'
             }
           />
 
