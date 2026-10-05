@@ -496,13 +496,47 @@ test('Phase 9: payments and invoicing', async (t) => {
 
     assert.equal(second.body.data.reused, true);
     assert.equal(
-      second.body.data.checkout.orderId,
+      second.body.data.payment.orderId,
       first.body.data.payment.orderId,
       'the second attempt must hand back the SAME order id - a new one would not be in the database, and verification would fail after the money moved',
     );
 
     const rows = await query('SELECT COUNT(*)::int AS c FROM payments WHERE booking_id = $1', [booking.id]);
     assert.equal(rows.rows[0].c, 1, 'no duplicate payment row was created');
+  });
+
+  await t.test('the mock never advertises a hosted checkout, on either path', async () => {
+    // The frontend reads checkout.orderId to decide whether a real gateway
+    // window exists. The mock has none, so neither path may carry that field.
+    //
+    // This is a regression test. `createOrder` omitted it and `checkoutConfig`
+    // included it, so the FIRST attempt behaved and every reopen afterwards
+    // sent the browser to Razorpay's widget holding `mock_key_production`.
+    // Razorpay answered 401 and the customer read "Payment Failed".
+    const booking = await completedBooking();
+
+    const opened = await request(port, 'POST', '/api/v1/payments/orders', {
+      ...cAuth, body: { bookingId: booking.id },
+    });
+    assert.equal(opened.status, 201);
+    assert.equal(
+      opened.body.data.checkout.orderId,
+      undefined,
+      'a fresh mock order must not look like a hosted checkout',
+    );
+
+    const reopened = await request(port, 'POST', '/api/v1/payments/orders', {
+      ...cAuth, body: { bookingId: booking.id },
+    });
+    assert.equal(reopened.body.data.reused, true);
+    assert.equal(
+      reopened.body.data.checkout.orderId,
+      undefined,
+      'reopening must describe the mock exactly as opening it did',
+    );
+
+    // The order id itself is still returned - on the payment, where it belongs.
+    assert.ok(reopened.body.data.payment.orderId, 'the order id is still reachable');
   });
 
   await t.test('a pending order from a different gateway is retired, not reused', async () => {

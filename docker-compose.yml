@@ -47,9 +47,10 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
-    # Not published. Uncomment only to connect a GUI client from the host, and
-    # remember it then listens on every interface.
-       ports:
+    # Published on the loopback interface only, so Postgres is reachable from
+    # the server itself but never from the internet. A GUI client on a laptop
+    # reaches it through an SSH tunnel, not by opening this to 0.0.0.0.
+    ports:
       - "127.0.0.1:15432:5432"
 
   # --------------------------------------------------------------- migrate

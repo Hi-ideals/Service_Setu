@@ -84,10 +84,19 @@ const mockDriver = {
     };
   },
 
-  checkoutConfig({ orderId, amountMinor, currency, description }) {
+  /**
+   * Rebuilds the checkout payload for an order we already created.
+   *
+   * Deliberately omits `orderId`, exactly as `createOrder` does. The frontend
+   * reads that field to decide whether a real gateway checkout window exists:
+   * handing it one here sent the browser to Razorpay's widget carrying this
+   * driver's fake key, which Razorpay answered with a 401 and the customer
+   * saw as "Payment Failed". The two paths must describe the mock the same
+   * way, or reopening a pending payment behaves differently from starting it.
+   */
+  checkoutConfig({ amountMinor, currency, description }) {
     return {
       key: 'mock_key_' + env.NODE_ENV,
-      orderId,
       amountMinor,
       currency: currency || 'INR',
       name: 'ServiceSetu',
