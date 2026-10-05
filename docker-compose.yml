@@ -138,13 +138,24 @@ services:
   # to the internet: 80 is how the ACME challenge proves the domain points
   # here, and Caddy redirects it to 443 the rest of the time.
   caddy:
+    # Behind a profile, so a bare `docker compose up -d` never starts it.
+    #
+    # Caddy is for a machine where nothing else owns 80 and 443. On a server
+    # already running a web server - Apache fronting several sites, say - it
+    # cannot bind them, and the whole `up` fails on a container that was not
+    # wanted. Opt in with `--profile tls` on a host where it is the only
+    # thing listening.
+    profiles: ["tls"]
     image: caddy:2-alpine
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     environment:
-      SITE_DOMAIN: ${SITE_DOMAIN:?set SITE_DOMAIN in .env}
+      # Defaulted rather than required: Compose interpolates every service,
+      # including ones no profile selected, so `:?` here failed commands that
+      # had nothing to do with Caddy.
+      SITE_DOMAIN: ${SITE_DOMAIN:-localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # Certificates and ACME account keys. This MUST persist: Let's Encrypt
@@ -170,7 +181,11 @@ services:
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
     profiles: ["tunnel"]
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
+    # Defaulted, not required. Compose interpolates every service before it
+    # looks at profiles, so `:?` here refused commands that were never going to
+    # start this container - including, on a server with no tunnel at all,
+    # every `docker compose` command.
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-unset}
     depends_on:
       web:
         condition: service_healthy
