@@ -89,6 +89,10 @@ export default function Register() {
         replace: true,
         state: {
           destination: result.verification && result.verification.destination,
+          // What to show the customer, which is a masked number when the code
+          // went over WhatsApp. Kept apart from `destination`, which is the
+          // key posted back to confirm.
+          sentTo: result.verification && result.verification.sentTo,
           channel: result.verification && result.verification.channel,
           devCode: result.verification && result.verification.devCode,
           role,

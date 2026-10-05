@@ -14,6 +14,7 @@ import env from '../config/env.js';
 import logger from '../config/logger.js';
 import { sendEmail } from './email/mailer.js';
 import { notificationEmail } from './email/templates.js';
+import * as whatsapp from './whatsapp/client.js';
 
 const smsDriver = {
   async send({ destination, title, body }) {
@@ -39,6 +40,16 @@ export async function notify({
   data = null,
   entityType = null,
   entityId = null,
+  /**
+   * Re-raise a delivery failure after recording it.
+   *
+   * Delivery is best-effort by default: a booking confirmation that could not
+   * be emailed is recorded as failed and the request carries on, because the
+   * booking itself succeeded. A verification code is different - if it did not
+   * arrive, the caller has to try another channel, and it can only know that
+   * if the failure reaches it.
+   */
+  rethrow = false,
 }) {
   let row = null;
 
@@ -57,6 +68,12 @@ export async function notify({
     ).rows[0];
   } catch (err) {
     logger.error({ err, eventType }, 'Could not record notification');
+    // A caller that asked to hear about failures has to hear about this one
+    // too. Returning null here would let it report the message as sent when
+    // nothing was ever attempted - the worst of both outcomes, because the
+    // fallback never fires and the customer is told to check a phone that
+    // will never ring.
+    if (rethrow) throw err;
     return null;
   }
 
@@ -71,6 +88,16 @@ export async function notify({
       await sendEmail({ to: destination, ...content });
     } else if (channel === 'sms') {
       await smsDriver.send({ destination, title, body });
+    } else if (channel === 'whatsapp') {
+      // Only verification codes go over WhatsApp. Meta allows free-form text
+      // only inside a 24-hour window opened by the customer messaging first,
+      // which a notification about a booking almost never falls inside - so
+      // anything without a code is recorded and left for email to carry.
+      if (data?.code) {
+        await whatsapp.sendOtp({ phone: destination, code: data.code });
+      } else {
+        throw new Error('WhatsApp carries verification codes only');
+      }
     } else {
       // push, or anything added later, is recorded but not yet delivered.
       logger.debug({ channel, eventType }, 'Channel has no driver, recorded only');
@@ -83,6 +110,7 @@ export async function notify({
       [row.id, err.message],
     );
     logger.warn({ err: err.message, eventType, channel }, 'Notification delivery failed');
+    if (rethrow) throw err;
   }
 
   return row.id;

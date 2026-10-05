@@ -75,8 +75,18 @@ export default function VerifyAccount() {
   const { user, reloadUser } = useAuth();
   const toast = useToast();
 
-  // Codes go by email, so the destination is always an email address.
+  /**
+   * Two values, deliberately separate.
+   *
+   * `destination` is the key the code is filed under - always the email
+   * address - and is posted back unchanged to confirm. `sentTo` is only ever
+   * displayed: when WhatsApp carried the code it is a masked phone number,
+   * which is not a usable key and must never be submitted.
+   */
   const destination = state?.destination || user?.email;
+  const sentTo = state?.sentTo || destination;
+  const channel = state?.channel || 'email';
+  const viaWhatsApp = channel === 'whatsapp';
   const [code, setCode] = useState(state?.devCode || '');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -127,23 +137,25 @@ export default function VerifyAccount() {
     <AuthLayout
       title="Confirm your account"
       subtitle={
-        destination
-          ? 'We emailed a 6-digit code to ' + destination + '. It may take a moment to arrive.'
-          : 'Enter the code we emailed you.'
+        sentTo
+          ? 'We sent a 6-digit code ' +
+            (viaWhatsApp ? 'on WhatsApp to ' : 'by email to ') +
+            sentTo + '. It may take a moment to arrive.'
+          : 'Enter the code we sent you.'
       }
     >
       <form onSubmit={onSubmit} className="space-y-5">
         {error && <Alert variant="error">{error}</Alert>}
 
         {/*
-          Only ever shown when the API told us nothing was actually emailed,
-          which happens when no mail server is configured. With SMTP live the
-          API withholds the code entirely, so this cannot appear.
+          Only ever shown when the API told us nothing was really sent, which
+          happens when no mail server or WhatsApp account is configured. With
+          either live the API withholds the code, so this cannot appear.
         */}
         {state?.devCode && (
-          <Alert variant="info" title="No mail server configured">
-            Nothing was emailed, so the code is filled in for you. It is also printed in the API
-            log.
+          <Alert variant="info" title="Nothing was actually sent">
+            No delivery is configured, so the code is filled in for you. It is also printed in the
+            API log.
           </Alert>
         )}
 

@@ -108,6 +108,42 @@ const schema = z.object({
 
   // Kept for booking alerts, where reaching someone on site matters more than
   // the cost of a message. Not used for OTP any more.
+  /**
+   * WhatsApp, for verification codes.
+   *
+   * `console` logs the code instead of sending it, which is what development
+   * and the test suite use. `cloud` talks to Meta's Cloud API and needs the
+   * three values below.
+   *
+   * Only authentication-template messages can be sent: Meta forbids free-form
+   * text to someone who has not messaged you first, and a verification code is
+   * by definition the first contact.
+   */
+  WHATSAPP_DRIVER: z.enum(['console', 'cloud']).default('console'),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().optional().default(''),
+  WHATSAPP_ACCESS_TOKEN: z.string().optional().default(''),
+  WHATSAPP_TEMPLATE_NAME: z.string().optional().default(''),
+  // Meta treats these as distinct: a template approved as `en` cannot be sent
+  // as `en_US`, and the error does not say so.
+  WHATSAPP_TEMPLATE_LANGUAGE: z.string().default('en'),
+  /**
+   * Whether the template carries a copy-code button.
+   *
+   * Meta's authentication templates normally do, and the code has to be
+   * supplied twice when they do - once for the body, once for the button. A
+   * template without one rejects the extra component, and the error names the
+   * component index rather than saying a button was not expected.
+   */
+  WHATSAPP_TEMPLATE_HAS_BUTTON: bool(true),
+
+  /**
+   * Which channel verification codes go to first.
+   *
+   * Delivery falls back to email whenever the preferred channel fails, so a
+   * customer whose number is not on WhatsApp can still create an account.
+   */
+  OTP_CHANNEL: z.enum(['email', 'whatsapp']).default('email'),
+
   SMS_DRIVER: z.string().default('console'),
 })
   .superRefine((value, ctx) => {

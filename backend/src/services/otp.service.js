@@ -15,9 +15,12 @@ import { query, queryOne } from '../db/pool.js';
 import { numericOtp } from '../utils/helpers.js';
 import ApiError from '../utils/ApiError.js';
 import env from '../config/env.js';
+import logger from '../config/logger.js';
 import { notify } from './notification.service.js';
 import { otpEmail } from './email/templates.js';
 import { codeCanBeEchoed } from './email/mailer.js';
+import * as whatsapp from './whatsapp/client.js';
+import { toE164, maskPhone } from '../utils/phone.js';
 
 const TTL_MINUTES = 10;
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -40,13 +43,83 @@ export function assertEmailDestination(destination) {
 }
 
 /**
+ * Delivers a code, preferring WhatsApp and falling back to email.
+ *
+ * Returns which channel actually carried it, because the interface has to tell
+ * the customer where to look and guessing wrong is worse than not saying.
+ *
+ * WhatsApp failure is expected, not exceptional: the number may not be on
+ * WhatsApp at all, the customer may have blocked business messages, or Meta
+ * may be refusing a template that was fine yesterday. None of those should
+ * stop someone creating an account, so every one falls through to email.
+ */
+async function deliver({ userId, email, phone, purpose, code, extra, prefer }) {
+  const wantsWhatsApp = prefer === 'whatsapp' && Boolean(toE164(phone));
+
+  if (wantsWhatsApp) {
+    try {
+      await notify({
+        userId,
+        channel: 'whatsapp',
+        destination: phone,
+        eventType: 'otp.' + purpose,
+        title: 'Your verification code',
+        body: 'Your verification code was sent on WhatsApp.',
+        // The code travels in `data` rather than the body: the body is stored
+        // on the notification row, and a code sitting in the database in clear
+        // text outlives its ten-minute life by however long that row is kept.
+        data: { code },
+        // notify() swallows delivery failures by design. A code that did not
+        // arrive has to reach the catch below, or the fallback never fires and
+        // the customer waits for a message that was never sent.
+        rethrow: true,
+      });
+
+      return {
+        channel: 'whatsapp',
+        sentTo: maskPhone(phone),
+        devCode: whatsapp.codeCanBeEchoed() ? code : undefined,
+      };
+    } catch (err) {
+      logger.warn(
+        { err: err.message, purpose },
+        'WhatsApp could not carry the code, falling back to email',
+      );
+    }
+  }
+
+  const content = otpEmail({ purpose, code, minutes: TTL_MINUTES, extra });
+
+  await notify({
+    userId,
+    channel: 'email',
+    destination: email,
+    eventType: 'otp.' + purpose,
+    title: content.subject,
+    body: 'Your verification code was sent by email.',
+    email: content,
+  });
+
+  return {
+    channel: 'email',
+    sentTo: email,
+    devCode: codeCanBeEchoed() ? code : undefined,
+  };
+}
+
+/**
  * Issues a code and delivers it.
  *
- * The code comes back in the response only when no mail server is configured
- * and nothing was really sent - otherwise the email is the delivery, and
- * returning it here would defeat the point of sending it.
+ * `destination` stays the email address even when the code travels over
+ * WhatsApp. It is the key the code is stored and verified against, so keeping
+ * it stable means a code that fell back to email still verifies, and the
+ * confirm step does not have to know which channel carried it.
+ *
+ * The code comes back in the response only when nothing was really sent -
+ * otherwise the message is the delivery, and returning it here would defeat
+ * the point of sending it.
  */
-export async function issueOtp({ userId = null, destination, purpose, extra }) {
+export async function issueOtp({ userId = null, destination, purpose, extra, phone = null }) {
   assertEmailDestination(destination);
 
   const recent = await queryOne(
@@ -83,19 +156,17 @@ export async function issueOtp({ userId = null, destination, purpose, extra }) {
     [userId, destination, purpose, await bcrypt.hash(code, 8), expiresAt],
   );
 
-  const content = otpEmail({ purpose, code, minutes: TTL_MINUTES, extra });
-
-  await notify({
+  const delivery = await deliver({
     userId,
-    channel: 'email',
-    destination,
-    eventType: 'otp.' + purpose,
-    title: content.subject,
-    body: 'Your verification code was sent by email.',
-    email: content,
+    email: destination,
+    phone,
+    purpose,
+    code,
+    extra,
+    prefer: env.OTP_CHANNEL,
   });
 
-  return { expiresAt, channel: 'email', devCode: codeCanBeEchoed() ? code : undefined };
+  return { expiresAt, ...delivery };
 }
 
 /** Verifies and consumes a code. A consumed code can never be reused. */

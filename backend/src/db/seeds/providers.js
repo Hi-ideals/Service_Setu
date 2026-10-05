@@ -32,10 +32,10 @@ export const demoProviders = [
     rating: { average: 4.7, count: 128, completed: 142 },
   },
   {
-    fullName: 'Imran Shaikh',
+    fullName: 'Ramesh',
     email: 'electrician@servicesetu.in',
     phone: '9000000102',
-    businessName: 'Shaikh Electricals',
+    businessName: 'Ramesh Electricals',
     headline: 'Licensed electrician for wiring, fans and lighting',
     bio: 'Certified for domestic wiring and rewiring. Fan installation, switchboard repair, lighting and safety inspection.',
     experienceYears: 9,

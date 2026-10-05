@@ -78,11 +78,13 @@ export async function register({ role, fullName, email, phone, password, agencyN
       created.profile?.verification_status ?? created.agency?.verification_status ?? null,
   };
 
-  // Contact confirmation is required before the account is fully usable, and
-  // the code goes to the email address - see otp.service.js for why.
+  // Contact confirmation is required before the account is fully usable. The
+  // code is keyed to the email address but may be delivered over WhatsApp -
+  // see otp.service.js. The phone is passed so that choice is available.
   const otp = await issueOtp({
     userId: user.id,
     destination: email,
+    phone,
     purpose: OTP_PURPOSE.VERIFY_EMAIL,
   });
 
@@ -93,8 +95,16 @@ export async function register({ role, fullName, email, phone, password, agencyN
     ...session,
     verification: {
       required: true,
+      // The key the code is filed under. The client sends this back verbatim
+      // to confirm, so it must stay the address and never become the masked
+      // phone number the customer is shown.
       destination: email,
-      channel: 'email',
+      // What to tell them to check - a masked number when WhatsApp carried
+      // it, the address when email did.
+      sentTo: otp.sentTo,
+      // The channel that actually carried it, which differs from the one
+      // preferred whenever WhatsApp failed and email picked it up.
+      channel: otp.channel,
       expiresAt: otp.expiresAt,
       devCode: otp.devCode,
     },
@@ -164,9 +174,9 @@ export async function updateProfile(userId, payload) {
 // ---------------------------------------------------------------- contact and password
 
 export async function sendOtp({ destination, purpose }) {
-  // Someone may sign in with a phone number but still need the code by email,
-  // so the account is looked up either way and the code is always sent to the
-  // address on the account.
+  // Someone may sign in with a phone number but still need the code elsewhere,
+  // so the account is looked up either way and the code goes to the contact
+  // details on the account.
   const user = await repo.findForLogin(destination);
 
   // For password reset we never reveal whether the account exists.
@@ -174,7 +184,13 @@ export async function sendOtp({ destination, purpose }) {
     return {
       sent: true,
       destination,
-      channel: 'email',
+      sentTo: destination,
+      // Reports the configured preference rather than a fixed 'email'. A real
+      // account now answers with whichever channel carried the code, so a
+      // hardcoded value here would differ from a genuine response and tell an
+      // attacker that the address is not registered - which is the one thing
+      // this branch exists to hide.
+      channel: env.OTP_CHANNEL,
       expiresAt: new Date(Date.now() + 600000),
     };
   }
@@ -187,13 +203,20 @@ export async function sendOtp({ destination, purpose }) {
     );
   }
 
-  const otp = await issueOtp({ userId: user.id, destination: user.email, purpose });
+  const otp = await issueOtp({
+    userId: user.id,
+    destination: user.email,
+    phone: user.phone,
+    purpose,
+  });
 
   return {
     sent: true,
-    // The real destination, so the UI can say where to look.
+    // The lookup key, sent back unchanged when the code is confirmed.
     destination: user.email,
-    channel: 'email',
+    // Where to tell them to look.
+    sentTo: otp.sentTo,
+    channel: otp.channel,
     expiresAt: otp.expiresAt,
     devCode: otp.devCode,
   };
