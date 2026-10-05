@@ -170,8 +170,15 @@ async function seedProviders(tx, passwordHash, adminId) {
  * share one published password, which is fine on a laptop and unacceptable on
  * a machine other people can reach. A deployment seeds the catalogue, then the
  * operator registers the first admin themselves.
+ *
+ * `withoutAdmin` seeds the demo customer and providers but not the demo admin,
+ * for a demo or staging site that needs realistic data to click through while
+ * the keys to the platform stay with a real account. The published password is
+ * survivable on a customer or a provider - each reaches only its own data - but
+ * on an admin it hands every customer record, every KYC document and the payout
+ * controls to anyone who reads this file.
  */
-export async function seed({ catalogueOnly = false } = {}) {
+export async function seed({ catalogueOnly = false, withoutAdmin = false } = {}) {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, env.BCRYPT_ROUNDS);
 
   const result = await withTransaction(async (tx) => {
@@ -182,13 +189,40 @@ export async function seed({ catalogueOnly = false } = {}) {
       return { settings, categoryCount, providerCount: 0, adminId: null, customerId: null };
     }
 
-    const admin = await upsertUser(tx, {
-      role: 'admin',
-      fullName: 'Platform Admin',
-      email: 'admin@servicesetu.in',
-      phone: '9000000001',
-      passwordHash,
-    });
+    /**
+     * Providers are seeded already verified, and a verification has to name the
+     * admin who granted it. Without the demo admin that has to be a real one,
+     * and if the site has none, seeding approved providers would be writing an
+     * approval nobody made - so this fails rather than inventing it.
+     */
+    let admin;
+
+    if (withoutAdmin) {
+      // `tx.one` answers null for no rows rather than throwing, so the absence
+      // is checked here - otherwise this surfaces later as a TypeError on
+      // `admin.id`, which says nothing about what is actually wrong.
+      admin = await tx.one(
+        `SELECT id FROM users
+          WHERE role = 'admin' AND deleted_at IS NULL
+          ORDER BY created_at
+          LIMIT 1`,
+      );
+
+      if (!admin) {
+        throw new Error(
+          'No admin account exists to attribute provider verification to. ' +
+            'Register one and promote it to admin first, or seed without --no-admin.',
+        );
+      }
+    } else {
+      admin = await upsertUser(tx, {
+        role: 'admin',
+        fullName: 'Platform Admin',
+        email: 'admin@servicesetu.in',
+        phone: '9000000001',
+        passwordHash,
+      });
+    }
 
     const customer = await upsertUser(tx, {
       role: 'customer',
@@ -207,7 +241,14 @@ export async function seed({ catalogueOnly = false } = {}) {
 
     const providerCount = await seedProviders(tx, passwordHash, admin.id);
 
-    return { settings, categoryCount, providerCount, adminId: admin.id, customerId: customer.id };
+    return {
+      settings,
+      categoryCount,
+      providerCount,
+      adminId: admin.id,
+      adminSeeded: !withoutAdmin,
+      customerId: customer.id,
+    };
   });
 
   return result;
@@ -216,8 +257,10 @@ export async function seed({ catalogueOnly = false } = {}) {
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const catalogueOnly =
     process.argv.includes('--catalogue-only') || process.env.SEED_MODE === 'catalogue';
+  const withoutAdmin =
+    process.argv.includes('--no-admin') || process.env.SEED_MODE === 'no-admin';
 
-  seed({ catalogueOnly })
+  seed({ catalogueOnly, withoutAdmin })
     .then(async (r) => {
       console.log('\n  Seed complete');
       console.log('  ------------------------------------------');
@@ -230,7 +273,11 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
         console.log("    UPDATE users SET role = 'admin' WHERE email = 'you@example.com';");
       } else {
         console.log('\n  Demo accounts (password: ' + DEMO_PASSWORD + ')');
-        console.log('    admin    : admin@servicesetu.in');
+        console.log(
+          r.adminSeeded
+            ? '    admin    : admin@servicesetu.in'
+            : '    admin    : not seeded - your own admin account is unchanged',
+        );
         console.log('    customer : customer@servicesetu.in');
         console.log('    providers: plumber@ / electrician@ / acrepair@ / carpenter@servicesetu.in');
       }
