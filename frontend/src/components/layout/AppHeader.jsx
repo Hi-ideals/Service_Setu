@@ -35,7 +35,7 @@ export default function AppHeader({ navItems = [], menuLinks = [], children }) {
         scrolled ? 'shadow-card' : 'shadow-none',
       )}
     >
-      <div className="page flex h-14 items-center gap-4 sm:h-16">
+      <div className="page flex h-14 items-center gap-2 sm:h-16 sm:gap-4">
         <Logo />
 
         {navItems.length > 0 && (

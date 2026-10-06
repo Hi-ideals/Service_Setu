@@ -26,12 +26,20 @@ import mark from '../../assets/logo/servicemitra-mark.webp';
  * header it lives in: that bar is 56px on a phone and 64px above it, and a
  * logo taller than `h-11` leaves no breathing room above and below.
  *
+ * The phone step is `h-9`, not `h-10`. At 40px the lockup is 140px wide, which
+ * fits a 375px viewport and does not fit a 360px one - the sign-in and
+ * get-started labels wrapped to two lines each on a real handset.
+ *
+ * Below 360px it drops again to `h-8`. At 36px the lockup is 126px, and on a
+ * 320px screen that left the get-started button sitting flush against the
+ * right edge with the page one pixel wider than the viewport.
+ *
  * `lg` is for the footer and the sign-in page, which have the room to let the
  * tagline actually be legible.
  */
 const SIZES = {
   sm: 'h-8 sm:h-9',
-  md: 'h-10 sm:h-11',
+  md: 'h-8 min-[360px]:h-9 sm:h-11',
   lg: 'h-12 sm:h-14 lg:h-16',
 };
 

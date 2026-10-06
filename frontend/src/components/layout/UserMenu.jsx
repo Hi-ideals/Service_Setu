@@ -32,11 +32,33 @@ export default function UserMenu({ links = [] }) {
 
   if (!user) {
     return (
-      <div className="flex items-center gap-2">
-        <Button as={Link} to="/signin" variant="ghost" size="sm">
+      /*
+       * `shrink-0` and no wrapping on both, because this sits beside a logo
+       * that is 140px wide on a phone. Flex children with no shrink floor give
+       * up their width to the logo first and then wrap their own label - which
+       * is how "Sign in" became two lines and "Get started" became two more on
+       * a 360px handset.
+       *
+       * The gap tightens below `sm` as well: those eight pixels are the
+       * difference between fitting and not on the narrowest phones still in
+       * common use.
+       */
+      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+        <Button
+          as={Link}
+          to="/signin"
+          variant="ghost"
+          size="sm"
+          className="shrink-0 whitespace-nowrap px-2 sm:px-3"
+        >
           Sign in
         </Button>
-        <Button as={Link} to="/register" size="sm">
+        <Button
+          as={Link}
+          to="/register"
+          size="sm"
+          className="shrink-0 whitespace-nowrap px-3 sm:px-4"
+        >
           Get started
         </Button>
       </div>
