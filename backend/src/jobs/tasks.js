@@ -12,6 +12,7 @@ import { notify } from '../services/notification.service.js';
 import { expireStaleRequests } from '../modules/bookings/booking.service.js';
 import { nudgeStalledJobs } from '../modules/bookings/job.service.js';
 import { runBatch as runPayoutBatch } from '../modules/admin/payout.service.js';
+import { settleFromGateway } from '../modules/payments/payment.service.js';
 
 /** Auto-cancels booking requests the provider never answered. */
 export async function expireRequests() {
@@ -79,10 +80,14 @@ export async function retryNotifications() {
 /**
  * Reconciles payments against the gateway.
  *
- * A webhook that never arrived leaves a payment stuck as pending while the
- * customer's money has in fact left their account. This sweep finds those and
- * flags them; with a real gateway it would query the provider's API for the
- * authoritative status.
+ * A webhook that never arrived - or was rejected because no webhook secret was
+ * configured - leaves a payment pending while the customer's money has in fact
+ * left their account. This used only to log a warning, which meant the booking
+ * stayed owing until somebody read the logs, and nobody reads the logs.
+ *
+ * It now asks the gateway and settles what the gateway already holds. Two hours
+ * is the threshold: long enough that a customer still at the checkout is not
+ * swept up, short enough that nobody waits a day to have their booking closed.
  */
 export async function reconcilePayments() {
   const stuck = await queryMany(
@@ -95,14 +100,34 @@ export async function reconcilePayments() {
       LIMIT 100`,
   );
 
-  if (stuck.length) {
-    logger.warn(
-      { count: stuck.length, references: stuck.slice(0, 10).map((p) => p.reference) },
-      'Payments pending for over two hours - reconcile against the gateway',
-    );
+  if (!stuck.length) return { flagged: 0, settled: 0 };
+
+  logger.warn(
+    { count: stuck.length, references: stuck.slice(0, 10).map((p) => p.reference) },
+    'Payments pending for over two hours - reconciling against the gateway',
+  );
+
+  let settled = 0;
+
+  for (const row of stuck) {
+    try {
+      // One failure must not end the sweep: the next payment in the list may
+      // be a customer whose booking has been owing for six days.
+      const result = await settleFromGateway(row);
+      if (result) settled += 1;
+    } catch (err) {
+      logger.error(
+        { err: err.message, reference: row.reference, paymentId: row.id },
+        'Could not reconcile a pending payment',
+      );
+    }
   }
 
-  return { flagged: stuck.length };
+  if (settled) {
+    logger.warn({ settled }, 'Settled payments the gateway was already holding');
+  }
+
+  return { flagged: stuck.length, settled };
 }
 
 /**

@@ -50,6 +50,66 @@ function amountDue(booking) {
 }
 
 /**
+ * Settles a payment the gateway already holds but we never recorded.
+ *
+ * There are two ways a payment is meant to reach us: the webhook, and the
+ * browser coming back from checkout. Both can be missed - a webhook secret not
+ * configured, a tab closed on the success screen, a phone that lost signal the
+ * moment the money moved. When both are missed the gateway has the money and
+ * the booking still says payment due, and nothing in the system ever corrects
+ * it on its own.
+ *
+ * Returns the settled payment, or null if the gateway has nothing captured for
+ * that order - in which case the caller carries on as before.
+ *
+ * The amount is checked rather than trusted. A captured payment for some other
+ * figure is not this order being paid, and settling on it would close a
+ * booking against money that was never collected for it.
+ */
+export async function settleFromGateway(payment) {
+  const driver = gateway();
+  if (!driver.fetchOrderPayments || !payment?.gateway_order_id) return null;
+
+  let captured;
+  try {
+    const items = await driver.fetchOrderPayments(payment.gateway_order_id);
+    captured = (items ?? []).find(
+      (p) =>
+        ['captured', 'authorized'].includes(p.status) &&
+        Number(p.amount) === Number(payment.amount_minor),
+    );
+  } catch (err) {
+    // A gateway that cannot be reached is not evidence of anything. Leave the
+    // payment as it is and let the next attempt - or the next sweep - decide.
+    logger.warn(
+      { err: err.message, orderId: payment.gateway_order_id, reference: payment.reference },
+      'Could not read the order back from the gateway',
+    );
+    return null;
+  }
+
+  if (!captured) return null;
+
+  logger.warn(
+    {
+      reference: payment.reference,
+      orderId: payment.gateway_order_id,
+      gatewayPaymentId: captured.id,
+    },
+    'Gateway already held this payment - settling a booking that was left owing',
+  );
+
+  await settlePayment(
+    payment,
+    { paymentId: captured.id, amountMinor: Number(captured.amount), method: captured.method ?? null },
+    null,
+  );
+
+  const fresh = await repo.findById(payment.id);
+  return presentPayment(fresh ?? payment);
+}
+
+/**
  * Opens a payment for a booking and returns what the checkout widget needs.
  * Creating an order commits us to nothing - only the webhook does that.
  */
@@ -100,6 +160,24 @@ export async function createPaymentOrder(bookingId, customerId) {
     Number(existing.amount_minor) === amountDue(booking);
 
   if (reusable) {
+    /**
+     * Ask the gateway before handing the order back.
+     *
+     * "Pending" is only our view. If the customer paid and the browser never
+     * returned - they closed the tab on the success screen, or the network
+     * dropped - the money moved and nothing told us. Reopening that order then
+     * sends them to a checkout the gateway refuses with "the order is already
+     * paid", and no amount of retrying can ever clear it: the booking says
+     * payment due, the gateway says settled, and the customer is stuck.
+     *
+     * So the gateway is asked first, and a payment it already holds is settled
+     * here instead of being offered again.
+     */
+    const settled = await settleFromGateway(existing);
+    if (settled) {
+      return { payment: settled, checkout: null, reused: true, alreadySettled: true };
+    }
+
     return {
       payment: presentPayment(existing),
       checkout: driver.checkoutConfig({

@@ -13,6 +13,8 @@ import crypto from 'node:crypto';
 import { createApp } from '../src/app.js';
 import { pool, query, queryOne } from '../src/db/pool.js';
 import { signWebhook } from '../src/services/payment/gateway.js';
+import { settleFromGateway } from '../src/modules/payments/payment.service.js';
+import env from '../src/config/env.js';
 
 const PASSWORD = 'Password@123';
 const TAG = 'phase9-test';
@@ -503,6 +505,119 @@ test('Phase 9: payments and invoicing', async (t) => {
 
     const rows = await query('SELECT COUNT(*)::int AS c FROM payments WHERE booking_id = $1', [booking.id]);
     assert.equal(rows.rows[0].c, 1, 'no duplicate payment row was created');
+  });
+
+  /**
+   * The gateway holding money we never recorded.
+   *
+   * Both ways a payment reaches us can be missed: the webhook (no secret
+   * configured, or it simply never arrives) and the browser returning from
+   * checkout (tab closed on the success screen). When both are missed the
+   * money has moved and the booking still says payment due - and reopening the
+   * order sends the customer to a checkout the gateway refuses with "the order
+   * is already paid", forever.
+   *
+   * The driver's network is stubbed rather than mocked at the module boundary,
+   * so the real amount check and the real status check both run.
+   */
+  await t.test('a payment the gateway already holds is settled, not offered again', async () => {
+    const booking = await completedBooking();
+    const opened = await request(port, 'POST', '/api/v1/payments/orders', {
+      ...cAuth, body: { bookingId: booking.id },
+    });
+    assert.equal(opened.status, 201);
+
+    const row = await queryOne('SELECT * FROM payments WHERE booking_id = $1', [booking.id]);
+    assert.equal(row.status, 'pending');
+
+    // Make it look like a Razorpay order, which is the driver that can read an
+    // order back. The mock has no gateway to ask.
+    await query(
+      "UPDATE payments SET gateway = 'razorpay', gateway_order_id = $2 WHERE id = $1",
+      [row.id, 'order_stub_' + row.id.slice(0, 8)],
+    );
+    const pending = await queryOne('SELECT * FROM payments WHERE id = $1', [row.id]);
+
+    const realFetch = globalThis.fetch;
+    const realDriver = env.PAYMENT_DRIVER;
+    const realKey = env.RAZORPAY_KEY_ID;
+    const realSecret = env.RAZORPAY_KEY_SECRET;
+    env.PAYMENT_DRIVER = 'razorpay';
+    env.RAZORPAY_KEY_ID = env.RAZORPAY_KEY_ID || 'rzp_test_stub';
+    env.RAZORPAY_KEY_SECRET = env.RAZORPAY_KEY_SECRET || 'stub-secret';
+
+    const captured = {
+      id: 'pay_stub_' + row.id.slice(0, 8),
+      status: 'captured',
+      amount: Number(pending.amount_minor),
+      method: 'upi',
+    };
+
+    globalThis.fetch = async (url) => ({
+      ok: true,
+      status: 200,
+      json: async () =>
+        String(url).includes('/payments') ? { items: [captured] } : {},
+    });
+
+    try {
+      const settled = await settleFromGateway(pending);
+      assert.ok(settled, 'a captured payment must be settled');
+
+      const after = await queryOne('SELECT * FROM payments WHERE id = $1', [row.id]);
+      assert.equal(after.status, 'paid', 'the payment row is closed');
+      assert.equal(after.gateway_payment_id, captured.id);
+
+      // An invoice proves settlement ran the whole way, not just a status flip.
+      const invoice = await queryOne('SELECT id FROM invoices WHERE booking_id = $1', [booking.id]);
+      assert.ok(invoice, 'settling issues the invoice');
+    } finally {
+      globalThis.fetch = realFetch;
+      env.PAYMENT_DRIVER = realDriver;
+      env.RAZORPAY_KEY_ID = realKey;
+      env.RAZORPAY_KEY_SECRET = realSecret;
+    }
+  });
+
+  await t.test('a captured payment for a different amount is not treated as this one', async () => {
+    const booking = await completedBooking();
+    const opened = await request(port, 'POST', '/api/v1/payments/orders', {
+      ...cAuth, body: { bookingId: booking.id },
+    });
+    assert.equal(opened.status, 201);
+
+    const row = await queryOne('SELECT * FROM payments WHERE booking_id = $1', [booking.id]);
+    await query(
+      "UPDATE payments SET gateway = 'razorpay', gateway_order_id = $2 WHERE id = $1",
+      [row.id, 'order_stub_x_' + row.id.slice(0, 8)],
+    );
+    const pending = await queryOne('SELECT * FROM payments WHERE id = $1', [row.id]);
+
+    const realFetch = globalThis.fetch;
+    const realDriver = env.PAYMENT_DRIVER;
+    env.PAYMENT_DRIVER = 'razorpay';
+    env.RAZORPAY_KEY_ID = env.RAZORPAY_KEY_ID || 'rzp_test_stub';
+    env.RAZORPAY_KEY_SECRET = env.RAZORPAY_KEY_SECRET || 'stub-secret';
+
+    globalThis.fetch = async (url) => ({
+      ok: true,
+      status: 200,
+      json: async () =>
+        String(url).includes('/payments')
+          ? { items: [{ id: 'pay_other', status: 'captured', amount: 1, method: 'upi' }] }
+          : {},
+    });
+
+    try {
+      const settled = await settleFromGateway(pending);
+      assert.equal(settled, null, 'money collected for some other figure is not this order');
+
+      const after = await queryOne('SELECT status FROM payments WHERE id = $1', [row.id]);
+      assert.equal(after.status, 'pending', 'the payment is left alone');
+    } finally {
+      globalThis.fetch = realFetch;
+      env.PAYMENT_DRIVER = realDriver;
+    }
   });
 
   await t.test('the mock never advertises a hosted checkout, on either path', async () => {

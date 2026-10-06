@@ -102,6 +102,19 @@ export default function BookingDetail() {
     mutationFn: async () => {
       const { data: order } = await api.post('/payments/orders', { bookingId: id });
 
+      /**
+       * The gateway was already holding this payment.
+       *
+       * It happens when the money moved but nothing told us - the tab closed
+       * on the success screen, or the webhook never arrived. The API notices
+       * when it reopens the order, settles it, and sends this back instead of
+       * a checkout. Reopening the gateway here would only produce "the order
+       * is already paid", which is what the customer saw before.
+       */
+      if (order.alreadySettled) {
+        return { alreadySettled: true };
+      }
+
       // The mock driver has no checkout window; the webhook settles it.
       if (!order.checkout?.orderId) {
         return { mocked: true };
@@ -115,7 +128,9 @@ export default function BookingDetail() {
       queryClient.invalidateQueries({ queryKey: keys.payments.forBooking(id) });
       queryClient.invalidateQueries({ queryKey: keys.bookings.detail(id) });
 
-      if (result?.mocked) {
+      if (result?.alreadySettled) {
+        toast.success('That payment had already gone through. Your invoice is ready.');
+      } else if (result?.mocked) {
         toast.info('Payment order created. Complete it in the gateway checkout.');
       } else {
         toast.success('Payment received. Your invoice is ready.');
