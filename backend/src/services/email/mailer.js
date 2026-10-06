@@ -9,9 +9,22 @@
  * is testable with no provider at all; `smtp` sends for real. Nothing outside
  * this file knows which is in use.
  */
+import { fileURLToPath } from 'node:url';
+
 import nodemailer from 'nodemailer';
 import env from '../../config/env.js';
 import logger from '../../config/logger.js';
+import { LOGO_CID } from './templates.js';
+
+/**
+ * The logo that `templates.js` references as `cid:servicemitra-logo`.
+ *
+ * Resolved from this module's own URL rather than from the working directory,
+ * because the API is started from different places - npm scripts, the Docker
+ * image, a scheduled task - and a relative path silently becomes a missing
+ * image in exactly one of them.
+ */
+const LOGO_PATH = fileURLToPath(new URL('./assets/email-logo.png', import.meta.url));
 
 let transporter = null;
 
@@ -49,12 +62,29 @@ const drivers = {
 
 const smtpDriver = {
   async send({ to, subject, html, text }) {
+    // Attached only when the body actually references it. A message that
+    // carries an image nothing points at is just a bigger message.
+    const embedsLogo = typeof html === 'string' && html.includes('cid:' + LOGO_CID);
+
     const info = await smtpTransport().sendMail({
       from: env.EMAIL_FROM,
       to,
       subject,
       text,
       html,
+      attachments: embedsLogo
+        ? [
+            {
+              filename: 'servicemitra.png',
+              path: LOGO_PATH,
+              cid: LOGO_CID,
+              // Without this the client lists it as a file on the message, and
+              // an OTP email that looks like it carries an attachment is
+              // exactly what people are told not to open.
+              contentDisposition: 'inline',
+            },
+          ]
+        : undefined,
     });
     return { delivered: true, driver: 'smtp', messageId: info.messageId };
   },

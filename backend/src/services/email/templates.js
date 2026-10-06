@@ -6,28 +6,33 @@
  * also carries a text version, because a text-only client showing raw HTML is
  * worse than no formatting at all.
  */
-import env from '../../config/env.js';
-
 const BRAND = '#0C3E90';
 const INK = '#14293F';
 const MUTED = '#5A6672';
 
 /**
- * The logo, served by the frontend.
+ * The logo, embedded in the message rather than fetched from a URL.
  *
- * A remote image, not an attachment: a CID attachment makes every message
- * multipart and some clients then show it as a paperclip on the message, which
- * looks like the mail is carrying a file the reader should open.
+ * A remote image has to be reachable by the reader's mail provider, not by the
+ * reader: Gmail fetches through its own proxy. Pointing at APP_URL therefore
+ * worked in production and showed a broken image for anyone testing against
+ * localhost, which is exactly when you want to look at the mail.
  *
- * PNG rather than WebP because Outlook still will not render WebP, and it is
- * flattened onto white rather than left transparent - a transparent logo in a
- * client compositing onto its own dark theme would put dark navy letters on a
- * dark background.
+ * Embedding also means the logo does not depend on the frontend being deployed,
+ * and survives the site being briefly down.
  *
- * Most clients block remote images until the reader allows them, so the alt
- * text has to carry the brand name on its own.
+ * `contentDisposition: 'inline'` on the attachment is what stops clients
+ * listing it as a file on the message - without it an OTP email arrives
+ * looking like it carries an attachment the reader should open.
+ *
+ * PNG rather than WebP, because Outlook still will not render WebP. Flattened
+ * onto white rather than transparent, since a client compositing onto its own
+ * dark theme would otherwise put dark navy letterforms on a dark background.
+ *
+ * The alt text carries the name on its own: images are blocked by default in
+ * most clients until the reader allows them.
  */
-const LOGO_URL = env.APP_URL.replace(/\/$/, '') + '/email-logo.png';
+export const LOGO_CID = 'servicemitra-logo';
 
 function layout({ heading, body, footer }) {
   return `<!doctype html>
@@ -36,7 +41,7 @@ function layout({ heading, body, footer }) {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:14px;border:1px solid #DDE4EC;">
       <tr>
         <td style="padding:24px 28px 8px;">
-          <img src="${LOGO_URL}" alt="ServiceMitra" width="220" height="63"
+          <img src="cid:${LOGO_CID}" alt="ServiceMitra" width="220" height="63"
                style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-width:220px;" />
         </td>
       </tr>
