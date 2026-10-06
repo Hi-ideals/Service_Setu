@@ -53,7 +53,7 @@ export async function openCheckout({ checkout, customer, onDismiss }) {
       order_id: checkout.orderId,
       amount: checkout.amountMinor,
       currency: checkout.currency || 'INR',
-      name: checkout.name || 'ServiceSetu',
+      name: checkout.name || 'ServiceMitra',
       description: checkout.description,
       prefill: {
         name: customer?.fullName || '',

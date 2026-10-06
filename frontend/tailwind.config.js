@@ -1,10 +1,19 @@
 /**
  * Design tokens.
  *
- * The palette comes from the architecture document: teal as the brand colour,
- * navy for text and headers, amber for anything that needs the user to look at
- * it. Semantic names are used everywhere in components (`bg-brand-600`), never
- * raw hex, so a rebrand is one file.
+ * The palette is taken from the ServiceMitra logo rather than chosen beside it:
+ * the hues below were sampled from the artwork itself, so the brand blue here
+ * is the same blue as the wordmark, and the accent is the orange-to-red of
+ * "Mitra". Semantic names are used everywhere in components (`bg-brand-600`),
+ * never raw hex, which is what made this rebrand a change to one file.
+ *
+ * Sampled anchors: #0C3E90 primary blue, #122057 deep navy, #1C90E9 highlight,
+ * #F7AA3C gold, #EA7228 orange, #DD3313 red.
+ *
+ * The light end of the brand ramp is mixed from the highlight blue, not from
+ * the primary. Tinting a dark navy toward white drains its chroma and the 50
+ * and 100 steps come out grey, which reads as a dirty background rather than a
+ * brand one.
  */
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
@@ -12,16 +21,16 @@ export default {
     extend: {
       colors: {
         brand: {
-          50: '#ECFDF7',
-          100: '#D1FAE9',
-          200: '#A7F3D6',
-          300: '#6EE7BE',
-          400: '#34D3A2',
-          500: '#14B888',
-          600: '#0E7C66',
-          700: '#0B6352',
-          800: '#0A4F42',
-          900: '#083F36',
+          50: '#F1F8FE',
+          100: '#E1F1FC',
+          200: '#C4E2F9',
+          300: '#99CDF5',
+          400: '#60B1F0',
+          500: '#1363B8',
+          600: '#0C3E90',
+          700: '#0E3279',
+          800: '#102867',
+          900: '#122057',
         },
         ink: {
           50: '#F6F8FA',
@@ -35,12 +44,19 @@ export default {
           800: '#1C2733',
           900: '#14293F',
         },
+        /**
+         * The "Mitra" gradient, kept in order: gold, orange, red.
+         *
+         * White on accent-500 is 3.03:1, which is enough for a large label or
+         * an icon but not for body text. Accent carries badges, prices and
+         * highlights; anything small and white sits on accent-600 (4.61:1).
+         */
         accent: {
-          50: '#FFF8EC',
-          100: '#FDF0D5',
-          400: '#F0A32A',
-          500: '#D98A10',
-          600: '#B26A00',
+          50: '#FEF5F0',
+          100: '#FCE8DD',
+          400: '#F7AA3C',
+          500: '#EA7228',
+          600: '#DD3313',
         },
         success: { 50: '#ECFDF5', 100: '#D1FAE5', 500: '#10B981', 600: '#059669', 700: '#047857' },
         warning: { 50: '#FFFBEB', 100: '#FEF3C7', 500: '#F59E0B', 600: '#D97706', 700: '#B45309' },
@@ -96,11 +112,11 @@ export default {
           '0 1px 2px rgba(20, 41, 63, 0.06), 0 8px 20px -6px rgba(20, 41, 63, 0.10)',
         sheet: '0 -4px 24px rgba(20, 41, 63, 0.12)',
         pop: '0 4px 12px -2px rgba(20, 41, 63, 0.10), 0 16px 40px -8px rgba(20, 41, 63, 0.16)',
-        focus: '0 0 0 3px rgba(14, 124, 102, 0.22)',
+        focus: '0 0 0 3px rgba(12, 62, 144, 0.22)',
         /* An inner highlight along the top edge, which is what makes a solid
            button look lit rather than painted. */
-        btn: 'inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 1px 2px rgba(11, 99, 82, 0.24)',
-        'btn-hover': 'inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 4px 12px -2px rgba(11, 99, 82, 0.32)',
+        btn: 'inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 1px 2px rgba(18, 32, 87, 0.28)',
+        'btn-hover': 'inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 4px 12px -2px rgba(18, 32, 87, 0.36)',
         /**
          * Coloured light, not grey.
          *
@@ -108,10 +124,10 @@ export default {
          * shadow tinted with the element's own hue reads as the thing glowing,
          * which is what makes a primary action feel alive on hover.
          */
-        'glow-brand': '0 1px 2px rgba(11, 99, 82, 0.20), 0 8px 24px -6px rgba(20, 184, 136, 0.45)',
-        'glow-brand-lg': '0 2px 4px rgba(11, 99, 82, 0.18), 0 16px 40px -8px rgba(20, 184, 136, 0.50)',
+        'glow-brand': '0 1px 2px rgba(18, 32, 87, 0.22), 0 8px 24px -6px rgba(28, 144, 233, 0.45)',
+        'glow-brand-lg': '0 2px 4px rgba(18, 32, 87, 0.20), 0 16px 40px -8px rgba(28, 144, 233, 0.50)',
         'glow-danger': '0 1px 2px rgba(185, 28, 28, 0.20), 0 8px 24px -6px rgba(239, 68, 68, 0.42)',
-        'glow-accent': '0 1px 2px rgba(178, 106, 0, 0.20), 0 8px 24px -6px rgba(240, 163, 42, 0.42)',
+        'glow-accent': '0 1px 2px rgba(221, 51, 19, 0.22), 0 8px 24px -6px rgba(234, 114, 40, 0.42)',
         /* The bar a phone's thumb reaches for: lifted off the content, not
            floating away from it. */
         nav: '0 -1px 0 rgba(20, 41, 63, 0.06), 0 -8px 24px -12px rgba(20, 41, 63, 0.14)',
@@ -119,10 +135,10 @@ export default {
         'inset-top': 'inset 0 1px 0 rgba(255, 255, 255, 0.70)',
       },
       backgroundImage: {
-        'brand-gradient': 'linear-gradient(135deg, #0E7C66 0%, #12907A 55%, #14B888 100%)',
+        'brand-gradient': 'linear-gradient(135deg, #122057 0%, #0C3E90 55%, #1363B8 100%)',
         'brand-sheen': 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 60%)',
         'hero-glow':
-          'radial-gradient(60rem 30rem at 12% -10%, rgba(20, 184, 136, 0.16) 0%, transparent 60%), radial-gradient(45rem 26rem at 95% 0%, rgba(240, 163, 42, 0.12) 0%, transparent 62%)',
+          'radial-gradient(60rem 30rem at 12% -10%, rgba(28, 144, 233, 0.18) 0%, transparent 60%), radial-gradient(45rem 26rem at 95% 0%, rgba(234, 114, 40, 0.14) 0%, transparent 62%)',
         /**
          * Three overlapping soft lights instead of one flat tint.
          *
@@ -131,7 +147,7 @@ export default {
          * full-screen size. Used behind the auth panel and the hero.
          */
         aurora:
-          'radial-gradient(40rem 32rem at 8% 8%, rgba(20, 184, 136, 0.30) 0%, transparent 60%), radial-gradient(34rem 28rem at 92% 14%, rgba(240, 163, 42, 0.20) 0%, transparent 62%), radial-gradient(44rem 34rem at 55% 100%, rgba(14, 124, 102, 0.42) 0%, transparent 65%)',
+          'radial-gradient(40rem 32rem at 8% 8%, rgba(28, 144, 233, 0.30) 0%, transparent 60%), radial-gradient(34rem 28rem at 92% 14%, rgba(247, 170, 60, 0.22) 0%, transparent 62%), radial-gradient(44rem 34rem at 55% 100%, rgba(12, 62, 144, 0.45) 0%, transparent 65%)',
         /* A faint engineering grid: structure without decoration. */
         grid: 'linear-gradient(rgba(221, 228, 236, 0.55) 1px, transparent 1px), linear-gradient(90deg, rgba(221, 228, 236, 0.55) 1px, transparent 1px)',
         /* The travelling highlight on a skeleton or a hovered button. */

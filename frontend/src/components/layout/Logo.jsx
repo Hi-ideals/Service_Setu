@@ -1,34 +1,69 @@
 import { Link } from 'react-router-dom';
 import clsx from 'clsx';
 
-export default function Logo({ to = '/', className, showWordmark = true }) {
+import lockup from '../../assets/logo/servicemitra-lockup.webp';
+import mark from '../../assets/logo/servicemitra-mark.webp';
+
+/**
+ * The ServiceMitra logo.
+ *
+ * The artwork is a single image rather than the drawn mark and separate
+ * wordmark this used to be: the lockup has a mascot, a gradient wordmark and a
+ * tagline, none of which survive being rebuilt in SVG by hand.
+ *
+ * Both files are keyed to transparency, so they sit on the tinted headers and
+ * the footer glow without a white rectangle around them. Intrinsic dimensions
+ * are declared so the header does not reflow as the image decodes - the logo is
+ * the first thing on the page, and a shifting header is the most visible layout
+ * jump there is.
+ */
+
+/**
+ * Heights, not widths.
+ *
+ * The lockup is three and a half times as wide as it is tall, so every step up
+ * in height costs three and a half times as much width. `md` is capped by the
+ * header it lives in: that bar is 56px on a phone and 64px above it, and a
+ * logo taller than `h-11` leaves no breathing room above and below.
+ *
+ * `lg` is for the footer and the sign-in page, which have the room to let the
+ * tagline actually be legible.
+ */
+const SIZES = {
+  sm: 'h-8 sm:h-9',
+  md: 'h-10 sm:h-11',
+  lg: 'h-12 sm:h-14 lg:h-16',
+};
+
+const MARK_SIZES = {
+  sm: 'h-9 w-9',
+  md: 'h-11 w-11',
+  lg: 'h-14 w-14',
+};
+
+export default function Logo({ to = '/', className, showWordmark = true, size = 'md' }) {
+  const src = showWordmark ? lockup : mark;
+
   return (
-    <Link to={to} className={clsx('inline-flex items-center gap-2', className)} aria-label="ServiceSetu home">
-      <svg viewBox="0 0 32 32" className="h-8 w-8 shrink-0 drop-shadow-sm" aria-hidden="true">
-        {/* A gradient tile rather than a flat one: the mark is the only place
-            the brand appears at full saturation, so it carries the depth. */}
-        <defs>
-          <linearGradient id="setu-mark" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#12907A" />
-            <stop offset="100%" stopColor="#0B6352" />
-          </linearGradient>
-        </defs>
-        <rect width="32" height="32" rx="8.5" fill="url(#setu-mark)" />
-        <path
-          d="M10 21c0-3.3 2.7-6 6-6s6-2.7 6-6"
-          stroke="white"
-          strokeWidth="2.6"
-          strokeLinecap="round"
-          fill="none"
-        />
-        <circle cx="10" cy="21" r="2.6" fill="white" />
-        <circle cx="22" cy="9" r="2.6" fill="white" />
-      </svg>
-      {showWordmark && (
-        <span className="text-lg font-bold tracking-tight text-ink-900">
-          Service<span className="text-gradient">Setu</span>
-        </span>
+    <Link
+      to={to}
+      className={clsx(
+        'inline-flex shrink-0 items-center rounded-field',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2',
+        className,
       )}
+      aria-label="ServiceMitra home"
+    >
+      <img
+        src={src}
+        alt="ServiceMitra"
+        width={showWordmark ? 900 : 258}
+        height={258}
+        className={clsx(
+          'w-auto object-contain',
+          showWordmark ? SIZES[size] : MARK_SIZES[size],
+        )}
+      />
     </Link>
   );
 }

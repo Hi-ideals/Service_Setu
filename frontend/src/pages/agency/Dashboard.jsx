@@ -148,7 +148,7 @@ export default function AgencyDashboard() {
       </Card>
 
       <p className="mt-4 px-1 text-xs text-ink-400">
-        Each person on your team is paid directly for the work they do. ServiceSetu never routes
+        Each person on your team is paid directly for the work they do. ServiceMitra never routes
         their earnings through the agency.
       </p>
     </div>

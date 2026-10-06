@@ -16,16 +16,16 @@ export function About() {
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 -top-10 h-64 bg-hero-glow"
       />
-      <h1 className="relative text-3xl font-bold tracking-tight sm:text-4xl">About ServiceSetu</h1>
+      <h1 className="relative text-3xl font-bold tracking-tight sm:text-4xl">About ServiceMitra</h1>
 
       <div className="relative mt-5 space-y-4 text-md leading-relaxed text-ink-600">
         <p>
-          ServiceSetu connects people in Bidar with verified local professionals - plumbers,
+          ServiceMitra connects people in Bidar with verified local professionals - plumbers,
           electricians, carpenters, AC technicians and more.
         </p>
         <p>
           Finding someone reliable for work at home usually means asking around and hoping. We
-          built ServiceSetu so that it does not have to: every professional on the platform has had
+          built ServiceMitra so that it does not have to: every professional on the platform has had
           their identity and address checked before they can accept a single booking.
         </p>
       </div>
@@ -147,7 +147,7 @@ export function ForProviders() {
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 -top-10 h-64 bg-hero-glow"
       />
-      <h1 className="relative text-3xl font-bold tracking-tight sm:text-4xl">Work on ServiceSetu</h1>
+      <h1 className="relative text-3xl font-bold tracking-tight sm:text-4xl">Work on ServiceMitra</h1>
       <p className="mt-3 text-md text-ink-600">
         Set your own prices and hours. Get paid for every completed job, with an invoice for each
         one.

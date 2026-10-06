@@ -100,7 +100,7 @@ function toError(response, body) {
 
   if (!error?.message) {
     return new ApiError(
-      'Could not reach the ServiceSetu server. If it is restarting, wait a moment and try again.',
+      'Could not reach the ServiceMitra server. If it is restarting, wait a moment and try again.',
       { status: response.status, code: 'UPSTREAM_UNAVAILABLE' },
     );
   }
@@ -190,7 +190,7 @@ async function request(method, path, { body, params, signal, skipRefresh = false
     });
   } catch (err) {
     if (err.name === 'AbortError') throw err;
-    throw new ApiError('Cannot reach ServiceSetu. Check your connection and try again.', {
+    throw new ApiError('Cannot reach ServiceMitra. Check your connection and try again.', {
       status: 0,
       code: 'NETWORK_ERROR',
     });

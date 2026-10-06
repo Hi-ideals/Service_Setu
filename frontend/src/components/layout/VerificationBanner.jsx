@@ -48,7 +48,7 @@ const STATES = {
     className: 'border-danger-500/25 bg-gradient-to-r from-danger-50 via-danger-50 to-white text-danger-700',
     chip: 'icon-chip-danger',
     title: 'Your account is suspended',
-    body: 'You cannot accept bookings. Contact ServiceSetu support for details.',
+    body: 'You cannot accept bookings. Contact ServiceMitra support for details.',
     action: { label: 'Contact support', to: '/help' },
   },
 };

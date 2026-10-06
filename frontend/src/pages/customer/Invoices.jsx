@@ -84,7 +84,7 @@ export function InvoiceDetail() {
       <div className="hidden print:mb-6 print:block">
         <div className="flex items-baseline justify-between border-b border-ink-300 pb-3">
           <span className="text-xl font-bold text-ink-900">
-            Service<span className="text-brand-600">Setu</span>
+            Service<span className="text-accent-600">Mitra</span>
           </span>
           <span className="text-sm text-ink-500">Bidar, Karnataka</span>
         </div>
@@ -150,7 +150,7 @@ export function InvoiceDetail() {
 
           {/* Print-only: a paper invoice has no URL bar to show provenance. */}
           <p className="hidden pt-2 text-xs text-ink-400 print:block">
-            This is a computer-generated invoice for a service booked through ServiceSetu.
+            This is a computer-generated invoice for a service booked through ServiceMitra.
             Booking reference {invoice.booking.reference}.
           </p>
 

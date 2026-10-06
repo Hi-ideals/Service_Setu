@@ -40,7 +40,7 @@ export default function AppFooter() {
 
       <div className="page relative grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <Logo />
+          <Logo size="lg" />
           <p className="mt-3 max-w-xs text-sm leading-relaxed text-ink-500">
             Verified local professionals for plumbing, electrical, carpentry, AC repair and more.
           </p>
@@ -74,7 +74,7 @@ export default function AppFooter() {
 
       <div className="relative border-t border-ink-200/80">
         <div className="page flex flex-col items-center justify-between gap-2 py-4 text-sm text-ink-500 sm:flex-row">
-          <p>© {new Date().getFullYear()} ServiceSetu. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} ServiceMitra. All rights reserved.</p>
           <div className="flex items-center gap-4">
             <span className="inline-flex items-center gap-1.5">
               <MapPin aria-hidden="true" className="h-3.5 w-3.5 text-ink-400" />

@@ -126,7 +126,7 @@ export default function PayoutDetailsCard() {
               )}
               <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-400">
                 <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5" />
-                Only you and the ServiceSetu finance team can see this.
+                Only you and the ServiceMitra finance team can see this.
               </p>
             </div>
           </div>

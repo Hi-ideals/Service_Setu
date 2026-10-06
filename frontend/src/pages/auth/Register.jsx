@@ -122,7 +122,7 @@ export default function Register() {
       }
     >
       <fieldset className="mb-5">
-        <legend className="mb-2.5 text-sm font-medium text-ink-700">How will you use ServiceSetu?</legend>
+        <legend className="mb-2.5 text-sm font-medium text-ink-700">How will you use ServiceMitra?</legend>
         <div className="space-y-2">
           {ROLES.map((option) => (
             <label

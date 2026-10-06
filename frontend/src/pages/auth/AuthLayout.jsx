@@ -27,7 +27,7 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
         />
 
         <div className="relative">
-          <Logo />
+          <Logo size="lg" />
         </div>
 
         <div className="relative mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-8">
@@ -69,7 +69,7 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
             done properly.
           </h2>
           <p className="mt-4 max-w-md text-md leading-relaxed text-ink-300">
-            ServiceSetu connects you with verified plumbers, electricians, carpenters and AC
+            ServiceMitra connects you with verified plumbers, electricians, carpenters and AC
             technicians in Bidar.
           </p>
 

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-const SUFFIX = ' · ServiceSetu';
+const SUFFIX = ' · ServiceMitra';
 
 /**
  * Sets the document title for a screen.

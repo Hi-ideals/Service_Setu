@@ -140,7 +140,7 @@ export default function ProviderProfile() {
 
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
               {provider.rating.isNew ? (
-                <Badge variant="info" size="sm">New on ServiceSetu</Badge>
+                <Badge variant="info" size="sm">New on ServiceMitra</Badge>
               ) : (
                 <StarRating value={provider.rating.average} showValue count={provider.rating.count} />
               )}
@@ -170,8 +170,20 @@ export default function ProviderProfile() {
         </CardBody>
       </Card>
 
+      {/*
+        `min-w-0` on both columns is load-bearing, not tidying.
+
+        A grid item's automatic minimum size is its min-content width, so a
+        column refuses to shrink below the widest thing inside it. The day
+        strip under "Next available" scrolls sideways, and its min-content is
+        the full row of day cards - around 744px. That stretched the single
+        mobile track to 744px inside a 343px container, and the page ran off
+        the right edge: text clipped mid-word, the "Pick a slot" button cut in
+        half. The strip's own `overflow-x-auto` cannot prevent it, because it
+        is this column being measured, not the strip.
+      */}
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
+        <div className="min-w-0 space-y-4 lg:col-span-2">
           <Card>
             <CardHeader title="Services and prices" subtitle="Agreed before you book." />
             <CardBody className="divide-y divide-ink-200">
@@ -266,7 +278,7 @@ export default function ProviderProfile() {
           </Card>
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <Card>
             <CardHeader title="Next available" />
             <CardBody>

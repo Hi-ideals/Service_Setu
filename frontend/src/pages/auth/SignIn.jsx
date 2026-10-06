@@ -44,7 +44,7 @@ export default function SignIn() {
       subtitle="Sign in to manage your bookings."
       footer={
         <>
-          New to ServiceSetu?{' '}
+          New to ServiceMitra?{' '}
           <Link to="/register" className="link-grow font-semibold text-brand-600 hover:text-brand-700">
             Create an account
           </Link>

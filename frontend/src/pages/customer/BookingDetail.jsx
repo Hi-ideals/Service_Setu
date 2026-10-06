@@ -96,7 +96,7 @@ export default function BookingDetail() {
    * Three steps, and the browser is the messenger in all of them: our API
    * creates the order, Razorpay collects the card details on its own window,
    * and our API verifies the result against the gateway before anything is
-   * marked paid. Card numbers never touch ServiceSetu.
+   * marked paid. Card numbers never touch ServiceMitra.
    */
   const startPayment = useMutation({
     mutationFn: async () => {
@@ -174,7 +174,7 @@ export default function BookingDetail() {
       )}
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
+        <div className="min-w-0 space-y-4 lg:col-span-2">
           <Card>
             <CardHeader
               title="Progress"
@@ -255,7 +255,7 @@ export default function BookingDetail() {
           </Card>
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <Card>
             <CardHeader title="Details" />
             <CardBody className="space-y-3 text-base">
