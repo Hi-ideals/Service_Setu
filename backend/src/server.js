@@ -75,7 +75,7 @@ async function start() {
 
   server.listen(env.PORT, () => {
     logger.info(
-      'ServiceSetu API listening on http://localhost:' +
+      'ServiceMitra API listening on http://localhost:' +
         env.PORT +
         env.API_PREFIX +
         '  [' +

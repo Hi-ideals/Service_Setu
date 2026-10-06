@@ -131,7 +131,7 @@ router.get('/', (req, res) => {
 
   res.json({
     success: true,
-    service: 'ServiceSetu API',
+    service: 'ServiceMitra API',
     version: 'v1',
     baseUrl: env.API_PREFIX,
     conventions: {

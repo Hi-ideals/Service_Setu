@@ -139,7 +139,7 @@ export async function addProvider(agencyId, { fullName, email, phone, password, 
   notifyAllAsync({
     userId: created.user.id,
     eventType: 'agency.provider_added',
-    title: agency.name + ' has set up your ServiceSetu account',
+    title: agency.name + ' has set up your ServiceMitra account',
     body:
       'You can sign in with this email address and the password ' + agency.name +
       ' gave you. Set your services and working hours to start receiving jobs.',

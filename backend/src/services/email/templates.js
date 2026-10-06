@@ -6,10 +6,28 @@
  * also carries a text version, because a text-only client showing raw HTML is
  * worse than no formatting at all.
  */
+import env from '../../config/env.js';
 
-const BRAND = '#0E7C66';
+const BRAND = '#0C3E90';
 const INK = '#14293F';
 const MUTED = '#5A6672';
+
+/**
+ * The logo, served by the frontend.
+ *
+ * A remote image, not an attachment: a CID attachment makes every message
+ * multipart and some clients then show it as a paperclip on the message, which
+ * looks like the mail is carrying a file the reader should open.
+ *
+ * PNG rather than WebP because Outlook still will not render WebP, and it is
+ * flattened onto white rather than left transparent - a transparent logo in a
+ * client compositing onto its own dark theme would put dark navy letters on a
+ * dark background.
+ *
+ * Most clients block remote images until the reader allows them, so the alt
+ * text has to carry the brand name on its own.
+ */
+const LOGO_URL = env.APP_URL.replace(/\/$/, '') + '/email-logo.png';
 
 function layout({ heading, body, footer }) {
   return `<!doctype html>
@@ -18,7 +36,8 @@ function layout({ heading, body, footer }) {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:14px;border:1px solid #DDE4EC;">
       <tr>
         <td style="padding:24px 28px 8px;">
-          <span style="font-size:20px;font-weight:700;color:${INK};">Service<span style="color:${BRAND};">Setu</span></span>
+          <img src="${LOGO_URL}" alt="ServiceMitra" width="220" height="63"
+               style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-width:220px;" />
         </td>
       </tr>
       <tr>
@@ -33,7 +52,7 @@ function layout({ heading, body, footer }) {
       </tr>
       <tr>
         <td style="padding:16px 28px;border-top:1px solid #EEF2F6;font-size:12px;line-height:18px;color:#94A3B4;">
-          ${footer || 'ServiceSetu &middot; Bidar, Karnataka'}
+          ${footer || 'ServiceMitra &middot; Bidar, Karnataka'}
         </td>
       </tr>
     </table>
@@ -42,7 +61,7 @@ function layout({ heading, body, footer }) {
 }
 
 function codeBlock(code) {
-  return `<div style="margin:18px 0;padding:14px;background:#ECFDF7;border:1px solid #A7F3D6;border-radius:10px;text-align:center;">
+  return `<div style="margin:18px 0;padding:14px;background:#F1F8FE;border:1px solid #C4E2F9;border-radius:10px;text-align:center;">
     <span style="font-size:30px;font-weight:700;letter-spacing:8px;color:${BRAND};font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">${code}</span>
   </div>`;
 }
@@ -50,17 +69,17 @@ function codeBlock(code) {
 /** The purposes that send a code, and the words that go with each. */
 const PURPOSES = {
   verify_email: {
-    subject: 'Confirm your ServiceSetu account',
+    subject: 'Confirm your ServiceMitra account',
     heading: 'Confirm your account',
-    intro: 'Use this code to finish setting up your ServiceSetu account.',
+    intro: 'Use this code to finish setting up your ServiceMitra account.',
   },
   verify_phone: {
-    subject: 'Confirm your ServiceSetu account',
+    subject: 'Confirm your ServiceMitra account',
     heading: 'Confirm your account',
-    intro: 'Use this code to finish setting up your ServiceSetu account.',
+    intro: 'Use this code to finish setting up your ServiceMitra account.',
   },
   reset_password: {
-    subject: 'Reset your ServiceSetu password',
+    subject: 'Reset your ServiceMitra password',
     heading: 'Reset your password',
     intro: 'Use this code to choose a new password. If you did not ask for this, you can ignore this email and nothing will change.',
   },
@@ -80,7 +99,7 @@ export function otpEmail({ purpose, code, minutes = 10, extra }) {
       <p style="margin:0 0 4px;">${copy.intro}</p>
       ${codeBlock(code)}
       ${extra ? `<p style="margin:0 0 12px;">${extra}</p>` : ''}
-      <p style="margin:0;">This code expires in ${minutes} minutes. Never share it with anyone who contacts you claiming to be from ServiceSetu.</p>
+      <p style="margin:0;">This code expires in ${minutes} minutes. Never share it with anyone who contacts you claiming to be from ServiceMitra.</p>
     `,
     footer: 'If you did not request this, you can safely ignore this email.',
   });

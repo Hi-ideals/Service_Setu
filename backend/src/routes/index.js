@@ -69,7 +69,7 @@ router.use('/files', fileRouter);
 router.get('/', (_req, res) => {
   res.json({
     success: true,
-    message: 'ServiceSetu API',
+    message: 'ServiceMitra API',
     version: 'v1',
     environment: env.NODE_ENV,
     documentation: env.API_PREFIX + '/docs',

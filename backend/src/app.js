@@ -142,7 +142,7 @@ export function createApp() {
   app.get('/', (_req, res) => {
     res.json({
       success: true,
-      message: 'ServiceSetu - Local Service Marketplace API',
+      message: 'ServiceMitra - Local Service Marketplace API',
       version: '1.0.0',
       api: env.API_PREFIX,
       health: '/health',

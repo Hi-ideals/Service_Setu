@@ -97,7 +97,7 @@ const razorpayDriver = {
         orderId: order.id,
         amountMinor: order.amount,
         currency: order.currency,
-        name: 'ServiceSetu',
+        name: 'ServiceMitra',
         description: notes?.description ?? 'Service booking',
       },
     };
@@ -116,7 +116,7 @@ const razorpayDriver = {
       orderId,
       amountMinor,
       currency: currency || 'INR',
-      name: 'ServiceSetu',
+      name: 'ServiceMitra',
       description: description || 'Service booking',
     };
   },

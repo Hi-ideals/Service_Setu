@@ -265,7 +265,7 @@ export async function changePassword(userId, { currentPassword, newPassword }) {
     userId,
     eventType: 'account.password_changed',
     title: 'Your password was changed',
-    body: 'If this was not you, contact ServiceSetu support immediately.',
+    body: 'If this was not you, contact ServiceMitra support immediately.',
   });
 
   return { sessionsRevoked: revoked };
@@ -287,7 +287,7 @@ export async function resetPassword({ destination, code, newPassword }) {
     userId,
     eventType: 'account.password_reset',
     title: 'Your password was reset',
-    body: 'Your ServiceSetu password was reset. If this was not you, contact support immediately.',
+    body: 'Your ServiceMitra password was reset. If this was not you, contact support immediately.',
   });
 
   return { reset: true, sessionsRevoked: revoked };

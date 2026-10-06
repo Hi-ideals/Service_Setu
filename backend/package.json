@@ -2,7 +2,7 @@
   "name": "servicesetu-backend",
   "version": "1.0.0",
   "private": true,
-  "description": "ServiceSetu - Local Service Marketplace API (Node.js + Express + PostgreSQL)",
+  "description": "ServiceMitra - Local Service Marketplace API (Node.js + Express + PostgreSQL)",
   "type": "module",
   "main": "src/server.js",
   "engines": {

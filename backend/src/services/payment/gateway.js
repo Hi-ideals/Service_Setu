@@ -2,7 +2,7 @@
  * Payment gateway adapter.
  *
  * Nothing outside this folder knows which provider is in use. Card and UPI
- * details never reach ServiceSetu servers at all - the gateway collects them
+ * details never reach ServiceMitra servers at all - the gateway collects them
  * on its own hosted page, and we only ever see identifiers and a signature.
  *
  * The mock driver is deterministic and signs webhooks with the same HMAC
@@ -39,7 +39,7 @@ const mockDriver = {
         key: 'mock_key_' + env.NODE_ENV,
         amountMinor,
         currency,
-        name: 'ServiceSetu',
+        name: 'ServiceMitra',
         description: notes?.description ?? 'Service booking',
       },
     };
@@ -99,7 +99,7 @@ const mockDriver = {
       key: 'mock_key_' + env.NODE_ENV,
       amountMinor,
       currency: currency || 'INR',
-      name: 'ServiceSetu',
+      name: 'ServiceMitra',
       description: description || 'Service booking',
     };
   },

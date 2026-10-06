@@ -429,7 +429,7 @@ export async function approve(submissionId, adminId, { notes, expiresAt } = {}) 
           (result.profile.cascaded
             ? 'All ' + result.profile.cascaded + ' of your people can now take bookings.'
             : 'Anyone you add from now on can take bookings straight away.')
-        : 'You can now go online and start accepting bookings on ServiceSetu.',
+        : 'You can now go online and start accepting bookings on ServiceMitra.',
     entityType: 'kyc_submission',
     entityId: submissionId,
   });
@@ -533,7 +533,7 @@ export async function setProviderStatus(providerId, adminId, { status, reason })
     eventType: suspended ? 'provider.suspended' : 'provider.reinstated',
     title: suspended ? 'Your account has been suspended' : 'Your account has been reinstated',
     body: reason || (suspended
-      ? 'Contact ServiceSetu support for details.'
+      ? 'Contact ServiceMitra support for details.'
       : 'You can go online again and accept bookings.'),
   });
 

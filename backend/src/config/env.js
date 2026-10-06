@@ -100,7 +100,7 @@ const schema = z.object({
   // ---------- messaging ----------
   // OTP goes by email, not SMS: every SMS costs money and email does not.
   EMAIL_DRIVER: z.enum(['console', 'smtp']).default('console'),
-  EMAIL_FROM: z.string().default('ServiceSetu <no-reply@servicesetu.in>'),
+  EMAIL_FROM: z.string().default('ServiceMitra <no-reply@servicesetu.in>'),
   SMTP_HOST: z.string().optional().default(''),
   SMTP_PORT: num(587),
   SMTP_USER: z.string().optional().default(''),
