@@ -360,7 +360,18 @@ export default function Home() {
             <h2 className="text-2xl font-semibold sm:text-3xl">What do you need done?</h2>
             <p className="mt-1.5 text-md text-ink-500">Browse by the kind of work.</p>
           </div>
-          <Button as={Link} to="/search" variant="link" size="sm" iconRight={ArrowRight}>
+          {/* `shrink-0` and no wrapping: at 375px the heading beside this takes
+              almost the whole row, and a flex child with no shrink floor
+              collapses to its narrowest - "See" over "all", with the arrow
+              stranded on the second line. */}
+          <Button
+            as={Link}
+            to="/search"
+            variant="link"
+            size="sm"
+            iconRight={ArrowRight}
+            className="shrink-0 whitespace-nowrap"
+          >
             See all
           </Button>
         </div>

@@ -183,7 +183,14 @@ export default function Dashboard() {
               title="Incoming requests"
               action={
                 requests.length > 0 && (
-                  <Button as={Link} to="/provider/requests" variant="link" size="sm" iconRight={ArrowRight}>
+                  <Button
+                    as={Link}
+                    to="/provider/requests"
+                    variant="link"
+                    size="sm"
+                    iconRight={ArrowRight}
+                    className="shrink-0 whitespace-nowrap"
+                  >
                     See all
                   </Button>
                 )

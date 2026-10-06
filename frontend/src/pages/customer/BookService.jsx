@@ -224,7 +224,7 @@ export default function BookService() {
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+        <div className="min-w-0 lg:col-span-2">
           <Card>
             <CardBody>
               {step === 0 && (
@@ -397,7 +397,7 @@ export default function BookService() {
           </Card>
         </div>
 
-        <div>
+        <div className="min-w-0">
           <Card className="lg:sticky lg:top-24">
             <CardHeader title="Your booking" />
             <CardBody className="space-y-3 text-base">
