@@ -130,7 +130,9 @@ test('Phase 5: verification and KYC', async (t) => {
     const res = await request(port, 'GET', '/api/v1/kyc/me', provider);
     assert.equal(res.status, 200);
     assert.equal(res.body.data.status, 'unsubmitted');
-    assert.deepEqual(res.body.data.requiredDocuments, ['identity', 'address', 'photo']);
+    // Aadhaar and a photograph only. An Aadhaar already carries the address,
+    // so a second document proving it is friction rather than assurance.
+    assert.deepEqual(res.body.data.requiredDocuments, ['identity', 'photo']);
   });
 
   await t.test('an under-age applicant is rejected', async () => {
@@ -264,9 +266,13 @@ test('Phase 5: verification and KYC', async (t) => {
       ...adminAuth, body: {},
     });
     assert.equal(res.status, 400);
-    // Names every missing document, in words an admin can act on.
-    assert.match(res.body.error.message, /an address proof/i);
+    // Names the missing document, in words an admin can act on.
     assert.match(res.body.error.message, /a photograph/i);
+    assert.doesNotMatch(
+      res.body.error.message,
+      /address proof/i,
+      'an address proof is no longer compulsory, so it must not be demanded here',
+    );
   });
 
   await t.test('the admin can ask for more information instead of deciding', async () => {

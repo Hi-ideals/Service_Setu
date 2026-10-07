@@ -34,7 +34,7 @@ const ID_TYPES = [
  */
 const docTypes = (isAgency) => [
   { value: 'identity', label: 'Identity proof (Aadhaar)', required: true },
-  { value: 'address', label: 'Address proof', required: true },
+  { value: 'address', label: 'Address proof', required: false },
   {
     value: 'photo',
     // The same screen serves an agency, where "your photograph" would be a

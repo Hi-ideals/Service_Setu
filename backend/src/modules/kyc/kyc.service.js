@@ -24,8 +24,14 @@ const OPEN_STATES = [VERIFICATION_STATUS.PENDING, VERIFICATION_STATUS.INFO_REQUE
  *
  * `identity` is where the Aadhaar goes; the submission form records which kind
  * of id it is and its last four digits alongside.
+ *
+ * Address proof is deliberately not here. An Aadhaar carries the holder's
+ * address, so demanding a second document proving the same thing is friction
+ * that turns providers away at the one step they cannot skip. It can still be
+ * uploaded, and an admin can still ask for one through request-info when a
+ * particular submission needs it.
  */
-const REQUIRED_DOCS = ['identity', 'address', 'photo'];
+const REQUIRED_DOCS = ['identity', 'photo'];
 
 /**
  * How each document is named in a sentence.
