@@ -15,8 +15,38 @@ import * as repo from './kyc.repository.js';
 
 const OPEN_STATES = [VERIFICATION_STATUS.PENDING, VERIFICATION_STATUS.INFO_REQUESTED];
 
-/** Documents every submission must carry before it can be reviewed. */
-const REQUIRED_DOCS = ['identity', 'address'];
+/**
+ * Documents every submission must carry before it can be reviewed.
+ *
+ * A photograph is required, not optional. The customer sees who is coming and
+ * the admin can check the face against the identity document - a verification
+ * that never looked at the person is a verification of paperwork only.
+ *
+ * `identity` is where the Aadhaar goes; the submission form records which kind
+ * of id it is and its last four digits alongside.
+ */
+const REQUIRED_DOCS = ['identity', 'address', 'photo'];
+
+/**
+ * How each document is named in a sentence.
+ *
+ * Joining the raw keys produced "has not uploaded address and photo proof",
+ * which is not English and leaves the admin guessing what a "photo proof" is.
+ */
+const DOC_LABELS = {
+  identity: 'an identity proof',
+  address: 'an address proof',
+  photo: 'a photograph',
+  trade_certificate: 'a trade certificate',
+  other: 'a supporting document',
+};
+
+const listDocs = (types) =>
+  types
+    .map((t) => DOC_LABELS[t] ?? t)
+    .reduce((text, item, i, all) =>
+      i === 0 ? item : i === all.length - 1 ? text + ' and ' + item : text + ', ' + item,
+    '');
 
 function presentSubmission(s, documents = []) {
   return {
@@ -401,7 +431,7 @@ export async function approve(submissionId, adminId, { notes, expiresAt } = {}) 
     throw ApiError.badRequest(
       'Cannot approve: ' +
         (submission.agency_id ? 'this agency' : 'the provider') +
-        ' has not uploaded ' + missing.join(' and ') + ' proof',
+        ' has not uploaded ' + listDocs(missing),
     );
   }
 

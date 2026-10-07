@@ -130,7 +130,7 @@ test('Phase 5: verification and KYC', async (t) => {
     const res = await request(port, 'GET', '/api/v1/kyc/me', provider);
     assert.equal(res.status, 200);
     assert.equal(res.body.data.status, 'unsubmitted');
-    assert.deepEqual(res.body.data.requiredDocuments, ['identity', 'address']);
+    assert.deepEqual(res.body.data.requiredDocuments, ['identity', 'address', 'photo']);
   });
 
   await t.test('an under-age applicant is rejected', async () => {
@@ -264,7 +264,9 @@ test('Phase 5: verification and KYC', async (t) => {
       ...adminAuth, body: {},
     });
     assert.equal(res.status, 400);
-    assert.match(res.body.error.message, /address proof/i);
+    // Names every missing document, in words an admin can act on.
+    assert.match(res.body.error.message, /an address proof/i);
+    assert.match(res.body.error.message, /a photograph/i);
   });
 
   await t.test('the admin can ask for more information instead of deciding', async () => {
@@ -279,12 +281,20 @@ test('Phase 5: verification and KYC', async (t) => {
     assert.equal(inbox.body.data.canSubmit, true, 'the provider may respond');
   });
 
-  await t.test('the provider uploads the missing document and is approved', async () => {
+  await t.test('the provider uploads the missing documents and is approved', async () => {
     const uploaded = await upload(port, '/api/v1/kyc/me/documents', {
       token: provider.token, docType: 'address',
       filename: 'bill.png', content: PNG, contentType: 'image/png',
     });
     assert.equal(uploaded.status, 201);
+
+    // A photograph is required too: the admin checks the face against the
+    // identity document, and the customer sees who is coming.
+    const portrait = await upload(port, '/api/v1/kyc/me/documents', {
+      token: provider.token, docType: 'photo',
+      filename: 'portrait.png', content: PNG, contentType: 'image/png',
+    });
+    assert.equal(portrait.status, 201);
 
     const res = await request(port, 'POST', '/api/v1/admin/kyc/' + submissionId + '/approve', {
       ...adminAuth, body: { notes: 'Documents verified against the register.' },

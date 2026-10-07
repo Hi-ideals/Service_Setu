@@ -26,11 +26,23 @@ const ID_TYPES = [
   { value: 'driving_licence', label: 'Driving licence' },
 ];
 
-const DOC_TYPES = [
-  { value: 'identity', label: 'Identity proof', required: true },
+/**
+ * `required` here only drives the labelling. The server decides what a
+ * submission must carry; this list repeating it is a convenience for the
+ * provider, not the rule - so the two have to be kept in step, and the server
+ * refuses an approval either way.
+ */
+const docTypes = (isAgency) => [
+  { value: 'identity', label: 'Identity proof (Aadhaar)', required: true },
   { value: 'address', label: 'Address proof', required: true },
+  {
+    value: 'photo',
+    // The same screen serves an agency, where "your photograph" would be a
+    // question about a company.
+    label: isAgency ? "The owner's photograph" : 'Your photograph',
+    required: true,
+  },
   { value: 'trade_certificate', label: 'Trade certificate or licence', required: false },
-  { value: 'photo', label: 'Photograph', required: false },
 ];
 
 const STATUS = {
@@ -316,7 +328,7 @@ export default function Verification({ basePath = '/kyc', subject = 'provider' }
                 </Alert>
               )}
 
-              {DOC_TYPES.map((doc) => (
+              {docTypes(isAgency).map((doc) => (
                 <DocumentUpload
                   key={doc.value}
                   docType={doc.value}

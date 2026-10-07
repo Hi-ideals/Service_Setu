@@ -250,7 +250,9 @@ test('Phase 13: agencies', async (t) => {
     );
     await query(
       `INSERT INTO kyc_documents (submission_id, doc_type, storage_key, mime_type, size_bytes)
-       VALUES ($1,'identity','t/a.png','image/png',10), ($1,'address','t/b.png','image/png',10)`,
+       VALUES ($1,'identity','t/a.png','image/png',10),
+              ($1,'address','t/b.png','image/png',10),
+              ($1,'photo','t/c.png','image/png',10)`,
       [submission.id],
     );
 
