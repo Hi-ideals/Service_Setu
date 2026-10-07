@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { MapPin, CheckCircle2, Clock } from 'lucide-react';
+import Button from '../../components/ui/Button.jsx';
 import Card from '../../components/ui/Card.jsx';
 import Avatar from '../../components/ui/Avatar.jsx';
 import Badge from '../../components/ui/Badge.jsx';
@@ -11,11 +12,30 @@ import { money, pluralise } from '../../lib/format.js';
  *
  * A provider with no ratings shows "New" rather than a zero-star display,
  * because an honest 0.0 reads as a bad provider rather than an unrated one.
+ *
+ * The card has two destinations: the surface opens the profile, and the button
+ * goes straight to booking. That cannot be a link inside a link - the HTML is
+ * invalid and browsers disagree about what the inner one does - so the profile
+ * link is an overlay stretched across the card, and the button sits above it.
  */
 export default function ProviderCard({ provider }) {
   return (
     <Card interactive glow className="group overflow-hidden">
-      <Link to={'/providers/' + provider.id} className="relative block p-4 focus:outline-none">
+      <div className="relative p-4">
+        {/*
+          The profile link, stretched over the whole card.
+
+          It carries no visible content, so the accessible name has to be
+          explicit - a screen reader otherwise announces an empty link. It sits
+          above the card's content and below the button, which is what lets the
+          button win the click while everything else still opens the profile.
+        */}
+        <Link
+          to={'/providers/' + provider.id}
+          aria-label={'View ' + provider.name + "'s profile"}
+          className="absolute inset-0 z-10 rounded-card focus:outline-none focus-visible:ring-2
+                     focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+        />
         {/* A corner wash that blooms on hover, behind everything and
             pointer-transparent so it cannot steal the click. */}
         <span
@@ -103,11 +123,24 @@ export default function ProviderCard({ provider }) {
           </div>
         </div>
 
-        <div className="relative mt-3 flex items-baseline justify-between border-t border-ink-200/80 pt-3">
-          <span className="text-sm text-ink-500">Starting from</span>
-          <span className="figure text-lg">{money(provider.fromPrice)}</span>
+        <div className="relative mt-3 flex items-end justify-between gap-3 border-t border-ink-200/80 pt-3">
+          <div className="min-w-0">
+            <span className="block text-sm text-ink-500">Starting from</span>
+            <span className="figure text-lg">{money(provider.fromPrice)}</span>
+          </div>
+
+          {/* Above the stretched link, so this click books rather than opening
+              the profile. */}
+          <Button
+            as={Link}
+            to={'/book/' + provider.id}
+            size="sm"
+            className="relative z-20 shrink-0 whitespace-nowrap"
+          >
+            Book now
+          </Button>
         </div>
-      </Link>
+      </div>
     </Card>
   );
 }
