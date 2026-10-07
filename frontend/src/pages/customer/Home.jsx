@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Search, ShieldCheck, Clock, BadgeIndianRupee, Star, ArrowRight, Wrench, CalendarCheck, UserCheck, ReceiptIndianRupee, Sparkles,
+  Search, ShieldCheck, Clock, BadgeIndianRupee, Star, ArrowRight, Users, CalendarCheck, UserCheck, ReceiptIndianRupee, Sparkles,
 } from 'lucide-react';
 import { api } from '../../lib/api.js';
 import { keys } from '../../lib/queryClient.js';
@@ -45,20 +45,9 @@ const PROMISES = [
 function CategoryCard({ category }) {
   const image = categoryImage(category);
   const Icon = categoryIcon(category.icon);
+  // The same figure the tile shows: a category nobody is approved to work in
+  // is not bookable, which is what "Coming soon" on the photograph means.
   const available = category.providerCount > 0;
-
-  /**
-   * The services under this category, which is what the tile now counts.
-   *
-   * `providerCount` counts people, not work, so labelling it "services" would
-   * have said something untrue - Plumbing has 3 approved providers and 4
-   * services. Availability still comes from the provider count, because a
-   * category with services listed and nobody to do them is not bookable.
-   *
-   * A category with no children is itself the service, hence the floor of one:
-   * a leaf would otherwise read "0 services" while being perfectly bookable.
-   */
-  const serviceCount = category.children?.length || 1;
 
   return (
     <Link
@@ -109,20 +98,22 @@ function CategoryCard({ category }) {
 
       <div className="flex items-center justify-between gap-2 px-3.5 py-3">
         {/* Two tiles sit side by side at 375px, leaving roughly 170px for this
-            row - not enough for "4 services" and a price together at the
-            larger type. Below `sm` the count collapses to an icon and a
-            figure; the full phrase returns once there is room. */}
+            row - not enough for "4 professionals" and a price together, which
+            clipped to "4 profes...". Below `sm` the count collapses to an icon
+            and a figure; the full phrase returns once there is room. */}
         <span className="flex shrink-0 items-center gap-1.5 text-base text-ink-500 sm:text-md">
           {available ? (
             <>
-              <Wrench aria-hidden="true" className="h-4 w-4 text-ink-400 sm:hidden" />
-              <span className="sm:hidden">{serviceCount}</span>
+              <Users aria-hidden="true" className="h-4 w-4 text-ink-400 sm:hidden" />
+              <span className="sm:hidden">{category.providerCount}</span>
               <span className="hidden sm:inline">
-                {serviceCount}
-                {serviceCount === 1 ? ' service' : ' services'}
+                {category.providerCount}
+                {category.providerCount === 1 ? ' professional' : ' professionals'}
               </span>
               <span className="sr-only">
-                {serviceCount === 1 ? 'service available' : 'services available'}
+                {category.providerCount === 1
+                  ? 'professional available'
+                  : 'professionals available'}
               </span>
             </>
           ) : (
