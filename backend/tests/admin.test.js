@@ -393,14 +393,34 @@ test('Phase 11: governance and analytics', async (t) => {
 
   let payoutId = null;
 
-  await t.test('a payout preview shows only money out of its dispute window', async () => {
+  await t.test('a payout preview shows held money, but will not pay it', async () => {
+    /**
+     * Held earnings used to be absent from this screen entirely, which left an
+     * admin looking at "nothing to pay" with no idea that money was owed or
+     * when it would come due. They are listed now - and refused.
+     *
+     * Listing is not offering: `canPay` is what the button reads, and
+     * `blockedBy` says which of the three reasons applies, because they need
+     * different things from the admin.
+     */
     const res = await request(port, 'GET', '/api/v1/admin/payouts/preview', aAuth);
     assert.equal(res.status, 200);
     assert.ok(res.body.data.policy.minimumAmountMinor >= 0);
     assert.ok(Array.isArray(res.body.data.providers));
 
     const listed = res.body.data.providers.find((p) => p.providerId === provider.id);
-    assert.ok(!listed, 'held earnings are not offered for payout');
+    assert.ok(listed, 'money owed is visible even while it is held');
+    assert.equal(listed.canPay, false, 'but not payable');
+    assert.equal(listed.blockedBy, 'dispute_window');
+    // Not exactly zero: a refund reversal can push the available balance
+    // negative, and the invariant that matters is that nothing is payable.
+    assert.ok(listed.amountMinor <= 0, 'nothing is available yet');
+    assert.ok(listed.heldMinor > 0, 'and the held figure says how much is coming');
+    assert.ok(listed.availableFrom, 'with the moment it becomes payable, for the countdown');
+    assert.ok(
+      new Date(listed.availableFrom).getTime() > Date.now(),
+      'which is in the future, or there would be nothing to count down to',
+    );
   });
 
   await t.test('paying a provider with nothing payable is refused', async () => {
@@ -800,6 +820,25 @@ test('Phase 11: governance and analytics', async (t) => {
     // rupee sign, so the BOM is load-bearing rather than decorative.
     assert.equal(body.charCodeAt(0), 0xfeff, 'the export carries a UTF-8 BOM for Excel');
     assert.match(body, /Payout,Provider,Status,Method,Amount/);
+  });
+
+  await t.test('the payout history exports as CSV', async () => {
+    const res = await raw(port, '/api/v1/admin/payouts?format=csv', aAuth.token);
+    assert.equal(res.status, 200);
+    assert.match(res.headers['content-type'], /text\/csv/);
+    assert.match(
+      res.headers['content-disposition'],
+      /attachment; filename="servicemitra-payouts-\d{4}-\d{2}-\d{2}\.csv"/,
+    );
+
+    const body = res.body.toString('utf8');
+    assert.equal(body.charCodeAt(0), 0xfeff, 'the export carries a UTF-8 BOM for Excel');
+    assert.match(body, /Reference,Provider,Status,Amount,Method,Bank reference/);
+    assert.match(
+      body,
+      /Bank reference/,
+      'the bank reference is the only evidence tying a row to money that moved',
+    );
   });
 
   await t.test('a name that looks like a formula cannot execute in a spreadsheet', async () => {

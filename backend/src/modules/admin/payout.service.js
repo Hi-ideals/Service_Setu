@@ -84,9 +84,49 @@ export function eligible(minimumMinor) {
   );
 }
 
+/**
+ * Every provider who is owed anything, payable or not.
+ *
+ * `eligible` answers "who can be paid now" and is what the batch run uses.
+ * This answers "who is owed money", which is what an admin wants to see: a
+ * screen that shows nothing until a dispute window closes looks broken, and
+ * gives no warning of what is about to come due.
+ *
+ * Held and available are summed separately, and the earliest `available_at`
+ * still in the future is the moment the held part becomes payable - which is
+ * what the countdown on the screen is counting to.
+ */
+export function balances() {
+  return queryMany(
+    `SELECT e.provider_id,
+            COALESCE(p.business_name, u.full_name) AS provider_name,
+            p.user_id, p.payout_account_ref,
+            p.payout_method, p.payout_upi_id, p.payout_account_name,
+            p.payout_account_number, p.payout_ifsc, p.payout_bank_name,
+            SUM(e.amount_minor) FILTER (
+              WHERE e.available_at IS NULL OR e.available_at <= NOW()
+            )::bigint AS available_minor,
+            SUM(e.amount_minor) FILTER (WHERE e.available_at > NOW())::bigint AS held_minor,
+            MIN(e.available_at) FILTER (WHERE e.available_at > NOW()) AS next_available_at,
+            COUNT(DISTINCT e.booking_id)::int AS jobs,
+            MIN(e.created_at) AS oldest_entry
+       FROM provider_earnings e
+       JOIN provider_profiles p ON p.id = e.provider_id
+       JOIN users u ON u.id = p.user_id
+      WHERE e.payout_id IS NULL
+        AND p.deleted_at IS NULL
+      GROUP BY e.provider_id, p.business_name, u.full_name, p.user_id, p.payout_account_ref,
+               p.payout_method, p.payout_upi_id, p.payout_account_name,
+               p.payout_account_number, p.payout_ifsc, p.payout_bank_name
+     HAVING SUM(e.amount_minor) > 0
+      ORDER BY SUM(e.amount_minor) DESC`,
+  );
+}
+
 export async function preview() {
   const config = await settings.get('payout');
-  const rows = await eligible(config.minimumAmountMinor ?? 0);
+  const minimum = Number(config.minimumAmountMinor ?? 0);
+  const rows = await balances();
 
   return {
     policy: {
@@ -97,23 +137,51 @@ export async function preview() {
     mode: env.PAYOUT_MODE,
     providers: rows.map((r) => {
       const destination = destinationOf(r);
+      const availableMinor = Number(r.available_minor ?? 0);
+      const heldMinor = Number(r.held_minor ?? 0);
+
       return {
         providerId: r.provider_id,
         providerName: r.provider_name,
-        amountMinor: Number(r.amount_minor),
-        amount: money.toMajor(r.amount_minor),
+
+        // What could be sent today, and what is still inside a dispute window.
+        amountMinor: availableMinor,
+        amount: money.toMajor(availableMinor),
+        heldMinor,
+        held: money.toMajor(heldMinor),
+        totalOwedMinor: availableMinor + heldMinor,
+        totalOwed: money.toMajor(availableMinor + heldMinor),
+
+        // When the held part becomes payable. Null when nothing is held.
+        availableFrom: r.next_available_at,
+
         jobs: r.jobs,
         oldestEntry: r.oldest_entry,
         // Full details, not masked: this is the screen an admin pays from.
         destination,
-        // Owed but unpayable until they supply a destination. Shown rather
-        // than hidden, so the provider can be chased instead of forgotten.
-        canPay: Boolean(destination),
         hasPayoutAccount: Boolean(r.payout_account_ref),
+
+        /**
+         * Three separate reasons a transfer cannot be prepared, reported
+         * separately because they need different things from the admin: chase
+         * the provider for a destination, wait for the window, or wait for the
+         * balance to reach the minimum.
+         */
+        canPay: Boolean(destination) && availableMinor >= minimum && availableMinor > 0,
+        blockedBy: !destination
+          ? 'no_destination'
+          : availableMinor <= 0
+            ? 'dispute_window'
+            : availableMinor < minimum
+              ? 'below_minimum'
+              : null,
       };
     }),
-    totalMinor: rows.reduce((sum, r) => sum + Number(r.amount_minor), 0),
-    count: rows.length,
+
+    // The totals keep the same meaning they had: what can be sent now.
+    totalMinor: rows.reduce((sum, r) => sum + Number(r.available_minor ?? 0), 0),
+    heldTotalMinor: rows.reduce((sum, r) => sum + Number(r.held_minor ?? 0), 0),
+    count: rows.filter((r) => Number(r.available_minor ?? 0) >= minimum && Number(r.available_minor ?? 0) > 0).length,
   };
 }
 
@@ -488,7 +556,26 @@ export async function listPayouts({ providerId, status, limit, offset }) {
   };
 }
 
+/**
+ * The export of a payout history.
+ *
+ * The bank reference is the point of it: that column is the only evidence tying
+ * a row here to money that actually moved, and it is what an accountant
+ * reconciles against a statement.
+ */
+export const PAYOUT_HISTORY_COLUMNS = [
+  { header: 'Reference', value: (p) => p.reference },
+  { header: 'Provider', value: (p) => p.providerName },
+  { header: 'Status', value: (p) => p.status },
+  { header: 'Amount', value: (p) => p.amount },
+  { header: 'Method', value: (p) => p.method ?? '' },
+  { header: 'Bank reference', value: (p) => p.paymentReference ?? '' },
+  { header: 'Prepared', value: (p) => (p.createdAt ? new Date(p.createdAt).toISOString() : '') },
+  { header: 'Settled', value: (p) => (p.processedAt ? new Date(p.processedAt).toISOString() : '') },
+  { header: 'Failure reason', value: (p) => p.failureReason ?? '' },
+];
+
 export default {
-  preview, payProvider, runBatch, listPayouts, eligible,
+  preview, payProvider, runBatch, listPayouts, eligible, balances, PAYOUT_HISTORY_COLUMNS,
   markPaid, markFailed, destinationOf, maskDestination,
 };

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Wallet, Play, AlertTriangle, Hourglass } from 'lucide-react';
+import { Wallet, Play, AlertTriangle, Hourglass, Download } from 'lucide-react';
 import { api } from '../../lib/api.js';
 import { keys } from '../../lib/queryClient.js';
 import { useToast } from '../../context/ToastContext.jsx';
@@ -14,6 +14,7 @@ import Alert from '../../components/ui/Alert.jsx';
 import EmptyState from '../../components/ui/EmptyState.jsx';
 import { PageLoader } from '../../components/ui/Spinner.jsx';
 import PayoutDestination from '../../components/admin/PayoutDestination.jsx';
+import PayoutCountdown from '../../components/admin/PayoutCountdown.jsx';
 import { money, formatDateTime, pluralise } from '../../lib/format.js';
 import useDocumentTitle from '../../hooks/useDocumentTitle.js';
 import PageHeader from '../../components/ui/PageHeader.jsx';
@@ -45,6 +46,21 @@ export default function Payouts() {
   const [settling, setSettling] = useState(null);
   const [paymentReference, setPaymentReference] = useState('');
   const [failureReason, setFailureReason] = useState('');
+  const [exporting, setExporting] = useState(false);
+
+  async function exportHistory() {
+    setExporting(true);
+    try {
+      await api.download('/admin/payouts', {
+        params: { format: 'csv', limit: 5000 },
+        filename: 'servicemitra-payouts.csv',
+      });
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const { data: preview, isLoading } = useQuery({
     queryKey: ['admin', 'payouts', 'preview'],
@@ -197,30 +213,34 @@ export default function Payouts() {
       {/* ---------- eligible, not yet committed ---------- */}
       <Card className="mt-4">
         <CardHeader
-          title="Ready to pay"
+          title="Money owed"
           subtitle={
             preview?.policy
               ? preview.policy.schedule + ' schedule · minimum ' + money(preview.policy.minimumAmount)
               : undefined
           }
           action={
-            preview?.count > 0 ? (
-              <p className="text-lg font-semibold text-ink-900">{money(preview.totalMinor / 100)}</p>
+            preview?.providers?.length ? (
+              <div className="text-right">
+                <p className="text-lg font-semibold text-ink-900">
+                  {money(preview.totalMinor / 100)}
+                </p>
+                {preview.heldTotalMinor > 0 && (
+                  <p className="text-xs text-ink-500">
+                    plus {money(preview.heldTotalMinor / 100)} still held
+                  </p>
+                )}
+              </div>
             ) : null
           }
         />
         <CardBody className="p-0">
-          {!preview?.count ? (
+          {!preview?.providers?.length ? (
             <EmptyState
               compact
               icon={Wallet}
-              title="Nothing to pay right now"
-              description={
-                'Earnings appear here once their dispute window closes' +
-                (preview?.policy?.minimumAmountMinor
-                  ? ' and the provider is owed at least ' + money(preview.policy.minimumAmount) + '.'
-                  : '.')
-              }
+              title="Nobody is owed anything"
+              description="Completed jobs appear here as soon as the customer has paid."
             />
           ) : (
             <ul className="divide-y divide-ink-200">
@@ -229,13 +249,48 @@ export default function Payouts() {
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="font-medium text-ink-900">
-                        Pay {money(provider.amount)} to {provider.providerName}
+                        {money(provider.totalOwed)} owed to {provider.providerName}
                       </p>
+
                       <p className="mt-0.5 text-sm text-ink-500">
+                        {provider.amountMinor > 0 && (
+                          <>{money(provider.amount)} ready</>
+                        )}
+                        {provider.amountMinor > 0 && provider.heldMinor > 0 && ' · '}
+                        {provider.heldMinor > 0 && (
+                          <>{money(provider.held)} held</>
+                        )}
+                        {' · '}
                         {pluralise(provider.jobs, 'job')} · oldest{' '}
                         {formatDateTime(provider.oldestEntry)}
                       </p>
+
+                      {/* Says when, not just that it is waiting. An admin
+                          looking at a locked button needs to know whether to
+                          come back in ten minutes or tomorrow. */}
+                      {provider.availableFrom && (
+                        <PayoutCountdown
+                          className="mt-1.5"
+                          until={provider.availableFrom}
+                          onElapsed={() =>
+                            queryClient.invalidateQueries({ queryKey: ['admin', 'payouts'] })
+                          }
+                        />
+                      )}
+
+                      {provider.blockedBy === 'no_destination' && (
+                        <p className="mt-1.5 text-xs font-medium text-danger-600">
+                          No payout destination saved — they need to add one before they can be paid.
+                        </p>
+                      )}
+
+                      {provider.blockedBy === 'below_minimum' && preview.policy && (
+                        <p className="mt-1.5 text-xs text-ink-500">
+                          Under the {money(preview.policy.minimumAmount)} minimum.
+                        </p>
+                      )}
                     </div>
+
                     <Button
                       size="sm"
                       variant="secondary"
@@ -257,7 +312,22 @@ export default function Payouts() {
 
       {/* ---------- settled history ---------- */}
       <Card className="mt-4">
-        <CardHeader title="Payout history" />
+        <CardHeader
+          title="Payout history"
+          action={
+            payouts.length > 0 ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={Download}
+                loading={exporting}
+                onClick={exportHistory}
+              >
+                Export CSV
+              </Button>
+            ) : null
+          }
+        />
         <CardBody className="p-0">
           {payouts.length === 0 ? (
             <EmptyState compact icon={Wallet} title="No payouts yet" />

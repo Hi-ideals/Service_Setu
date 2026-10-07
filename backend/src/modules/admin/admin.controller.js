@@ -193,7 +193,20 @@ export const markPayoutFailed = asyncHandler(async (req, res) => {
 export const listPayouts = asyncHandler(async (req, res) => {
   const query = q(req);
   const { page, limit, offset } = getPagination(query);
-  const result = await payouts.listPayouts({ ...query, limit, offset });
+
+  // A CSV is the whole filtered history rather than one page of it.
+  const window = query.format === 'csv' ? { limit: query.limit ?? 5000, offset: 0 } : { limit, offset };
+  const result = await payouts.listPayouts({ ...query, ...window });
+
+  if (query.format === 'csv') {
+    return sendReport(res, {
+      format: 'csv',
+      name: 'servicemitra-payouts',
+      columns: payouts.PAYOUT_HISTORY_COLUMNS,
+      report: { rows: result.items, total: result.total },
+    });
+  }
+
   return paginated(res, result.items, { page, limit, total: result.total });
 });
 

@@ -56,8 +56,12 @@ export const settingKeyParam = z.object({
 export const payoutListSchema = z.object({
   providerId: z.string().uuid().optional(),
   status: z.enum(['pending', 'processing', 'paid', 'failed', 'on_hold']).optional(),
+  format: z.enum(['json', 'csv']).default('json'),
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(50).default(20),
+  // 50 is a screenful; an export is the whole filtered history, with a ceiling
+  // all the same because an unbounded one is a way to take the ledger out over
+  // HTTP.
+  limit: z.coerce.number().int().min(1).max(5000).default(20),
 });
 
 /**
