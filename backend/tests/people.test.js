@@ -177,6 +177,47 @@ test('Admin people directory', async (t) => {
     assert.equal(login.status, 200, 'and they can sign in again');
   });
 
+  await t.test('an admin account cannot be suspended at all', async () => {
+    /**
+     * Not merely your own.
+     *
+     * Only an admin can reach this endpoint, so admin suspension can only ever
+     * lock admins out of the console that unlocks accounts, and there is no way
+     * back from that inside the app.
+     *
+     * A second admin is made for the attempt rather than looked for: this
+     * database has one, and a test that quietly skips when it cannot find a
+     * subject asserts nothing while looking like it passed.
+     */
+    const stand_in = await queryOne(
+      "SELECT id, role FROM users WHERE email = 'electrician@servicesetu.in'",
+    );
+    await query("UPDATE users SET role = 'admin' WHERE id = $1", [stand_in.id]);
+
+    try {
+      const res = await request(port, 'PATCH', '/api/v1/admin/people/' + stand_in.id + '/status', {
+        ...aAuth, body: { status: 'suspended' },
+      });
+      assert.equal(res.status, 400);
+      assert.match(res.body.error.message, /admin/i);
+
+      const still = await queryOne('SELECT status FROM users WHERE id = $1', [stand_in.id]);
+      assert.equal(still.status, 'active', 'and nothing changed');
+    } finally {
+      // Status and bookability too, not just the role. If the guard ever
+      // regresses, the suspension here succeeds - and a stand-in left
+      // suspended takes the seeded electrician out of every later suite.
+      await query(
+        "UPDATE users SET role = $2::user_role, status = 'active' WHERE id = $1",
+        [stand_in.id, stand_in.role],
+      );
+      await query(
+        'UPDATE provider_profiles SET is_accepting_bookings = TRUE WHERE user_id = $1',
+        [stand_in.id],
+      );
+    }
+  });
+
   await t.test('an admin cannot suspend themselves', async () => {
     const res = await request(port, 'PATCH', '/api/v1/admin/people/' + admin.user.id + '/status', {
       ...aAuth, body: { status: 'suspended' },

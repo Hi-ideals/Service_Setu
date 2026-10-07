@@ -69,9 +69,12 @@ export async function list(query, window) {
 /**
  * Suspends or restores an account.
  *
- * An admin cannot suspend themselves. Locking yourself out of the only account
- * that can unlock accounts is a mistake with no in-app way back, and it is
- * easy to make from a list where your own row looks like every other.
+ * Admin accounts are out of scope entirely, not just your own. Only an admin
+ * can reach this endpoint, so the only thing admin suspension can achieve is
+ * admins locking each other - or themselves - out of the console that unlocks
+ * accounts, which has no in-app way back. An admin who should lose access
+ * loses it by having their role changed or their account removed, deliberately
+ * and not from a list where every row carries the same red button.
  */
 export async function setStatus(userId, { status, reason }, actingAdminId) {
   if (userId === actingAdminId) {
@@ -80,6 +83,10 @@ export async function setStatus(userId, { status, reason }, actingAdminId) {
 
   const existing = await repo.findUser(userId);
   if (!existing) throw ApiError.notFound('That account does not exist');
+
+  if (existing.role === ROLES.ADMIN) {
+    throw ApiError.badRequest('Admin accounts cannot be suspended from here');
+  }
 
   if (existing.status === status) {
     return { ...present({ ...existing, full_name: existing.full_name }), unchanged: true };

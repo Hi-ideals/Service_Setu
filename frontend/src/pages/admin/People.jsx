@@ -270,15 +270,20 @@ export default function People() {
                       </p>
                     </div>
 
-                    <Button
-                      size="sm"
-                      variant={suspended ? 'secondary' : 'danger'}
-                      icon={suspended ? RotateCcw : Ban}
-                      className="shrink-0 whitespace-nowrap"
-                      onClick={() => setPending({ person, next: suspended ? 'active' : 'suspended' })}
-                    >
-                      {suspended ? 'Restore' : 'Suspend'}
-                    </Button>
+                    {/* No control on an admin row. The server refuses it too -
+                        hiding a button is a courtesy, not a rule - but an
+                        action that cannot succeed should not be offered. */}
+                    {person.role !== 'admin' && (
+                      <Button
+                        size="sm"
+                        variant={suspended ? 'secondary' : 'danger'}
+                        icon={suspended ? RotateCcw : Ban}
+                        className="shrink-0 whitespace-nowrap"
+                        onClick={() => setPending({ person, next: suspended ? 'active' : 'suspended' })}
+                      >
+                        {suspended ? 'Restore' : 'Suspend'}
+                      </Button>
+                    )}
                   </li>
                 );
               })}
