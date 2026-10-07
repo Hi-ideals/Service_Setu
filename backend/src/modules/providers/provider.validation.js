@@ -89,31 +89,73 @@ export const categoryParamSchema = z.object({ categoryId: z.string().uuid('Inval
  * reaching the database and failing a check constraint the provider cannot
  * read. The same completeness rule exists in the schema as a backstop.
  */
-export const payoutMethodSchema = z.discriminatedUnion('method', [
-  z.object({
-    method: z.literal('upi'),
-    // Deliberately loose on the handle, strict on the shape: banks keep adding
-    // new PSP suffixes and an allowlist would reject valid ids within months.
-    upiId: z
-      .string()
-      .trim()
-      .regex(/^[\w.\-]{2,64}@[a-zA-Z]{2,32}$/, 'Enter a UPI id such as name@bank'),
-    accountName: z.string().trim().min(2).max(120).optional(),
-  }),
-  z.object({
-    method: z.literal('bank'),
-    accountName: z.string().trim().min(2, 'Enter the name on the account').max(120),
-    accountNumber: z
-      .string()
-      .trim()
-      .regex(/^[0-9]{6,20}$/, 'An account number is 6 to 20 digits'),
-    ifsc: z
-      .string()
-      .trim()
-      .regex(/^[A-Za-z]{4}0[A-Za-z0-9]{6}$/, 'Enter a valid 11-character IFSC code'),
-    bankName: z.string().trim().min(2).max(120).optional(),
-  }),
-]);
+const upiDetailsSchema = z.object({
+  // Deliberately loose on the handle, strict on the shape: banks keep adding
+  // new PSP suffixes and an allowlist would reject valid ids within months.
+  upiId: z
+    .string()
+    .trim()
+    .regex(/^[\w.\-]{2,64}@[a-zA-Z]{2,32}$/, 'Enter a UPI id such as name@bank'),
+  accountName: z.string().trim().min(2).max(120).optional(),
+});
+
+const bankDetailsSchema = z.object({
+  accountName: z.string().trim().min(2, 'Enter the name on the account').max(120),
+  accountNumber: z
+    .string()
+    .trim()
+    .regex(/^[0-9]{6,20}$/, 'An account number is 6 to 20 digits'),
+  ifsc: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z]{4}0[A-Za-z0-9]{6}$/, 'Enter a valid 11-character IFSC code'),
+  bankName: z.string().trim().min(2).max(120).optional(),
+});
+
+/**
+ * Where a provider gets paid.
+ *
+ * Both destinations can be held at once - a provider who has UPI for the quick
+ * ones and a bank account for the large ones should not have to retype either.
+ * `preferred` says which the payout queue uses.
+ *
+ * Each block is all-or-nothing. A bank destination missing its IFSC is worse
+ * than no bank destination: it looks payable in the queue and fails at the
+ * bank. Omitting a block entirely removes it, which is how a provider deletes
+ * one they no longer want.
+ */
+export const payoutMethodSchema = z
+  .object({
+    preferred: z.enum(['upi', 'bank'], {
+      errorMap: () => ({ message: 'Choose which destination to pay you on' }),
+    }),
+    upi: upiDetailsSchema.nullish(),
+    bank: bankDetailsSchema.nullish(),
+  })
+  .superRefine((value, ctx) => {
+    if (!value.upi && !value.bank) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['upi'],
+        message: 'Add a UPI id or a bank account',
+      });
+      return;
+    }
+
+    // Preferring a destination that was not supplied would leave the payout
+    // queue pointing at nothing, which the database constraint would then
+    // refuse with a message no provider can act on.
+    if (!value[value.preferred]) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['preferred'],
+        message:
+          value.preferred === 'upi'
+            ? 'Add a UPI id, or choose the bank account instead'
+            : 'Add the bank details, or choose UPI instead',
+      });
+    }
+  });
 
 export default {
   payoutMethodSchema,

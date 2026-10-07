@@ -461,29 +461,63 @@ test('Phase 11: governance and analytics', async (t) => {
 
   await t.test('a provider supplies their own payout destination', async () => {
     const bad = await request(port, 'PUT', '/api/v1/providers/me/payout-method', {
-      ...pAuth, body: { method: 'upi', upiId: 'not-a-upi-id' },
+      ...pAuth, body: { preferred: 'upi', upi: { upiId: 'not-a-upi-id' } },
     });
     assert.equal(bad.status, 422, 'a malformed UPI id is refused');
 
     const res = await request(port, 'PUT', '/api/v1/providers/me/payout-method', {
-      ...pAuth, body: { method: 'bank', accountName: 'Raj Electricals', accountNumber: '918273645500', ifsc: 'hdfc0001234' },
+      ...pAuth,
+      body: {
+        preferred: 'bank',
+        bank: { accountName: 'Raj Electricals', accountNumber: '918273645500', ifsc: 'hdfc0001234' },
+      },
     });
     assert.equal(res.status, 200);
     assert.equal(res.body.data.method, 'bank');
     assert.equal(res.body.data.ifsc, 'HDFC0001234', 'IFSC is normalised to upper case');
   });
 
-  await t.test('switching method does not leave the old destination behind', async () => {
+  await t.test('both destinations can be held at once', async () => {
     const res = await request(port, 'PUT', '/api/v1/providers/me/payout-method', {
-      ...pAuth, body: { method: 'upi', upiId: 'raj@okaxis' },
+      ...pAuth,
+      body: {
+        preferred: 'bank',
+        upi: { upiId: 'raj@okaxis' },
+        bank: { accountName: 'Raj Electricals', accountNumber: '918273645500', ifsc: 'HDFC0001234' },
+      },
+    });
+    assert.equal(res.status, 200, JSON.stringify(res.body?.error ?? ''));
+    assert.equal(res.body.data.upiId, 'raj@okaxis');
+    assert.equal(res.body.data.accountNumber, '918273645500');
+    assert.equal(res.body.data.method, 'bank', 'and one of them is the preferred destination');
+  });
+
+  await t.test('preferring a destination that was not supplied is refused', async () => {
+    const res = await request(port, 'PUT', '/api/v1/providers/me/payout-method', {
+      ...pAuth, body: { preferred: 'upi', bank: { accountName: 'Raj Electricals', accountNumber: '918273645500', ifsc: 'HDFC0001234' } },
+    });
+    assert.equal(res.status, 422, 'the payout queue would otherwise point at nothing');
+  });
+
+  await t.test('omitting a destination removes it, rather than leaving it behind', async () => {
+    const res = await request(port, 'PUT', '/api/v1/providers/me/payout-method', {
+      ...pAuth, body: { preferred: 'upi', upi: { upiId: 'raj@okaxis' } },
     });
     assert.equal(res.status, 200);
     assert.equal(res.body.data.upiId, 'raj@okaxis');
-    assert.equal(res.body.data.accountNumber, null, 'the bank account is cleared, not kept alongside');
+    assert.equal(
+      res.body.data.accountNumber,
+      null,
+      'a bank account left out of the payload is cleared - this is how a provider deletes one',
+    );
 
     // Back to bank for the payout below, so the admin queue has full details.
     await request(port, 'PUT', '/api/v1/providers/me/payout-method', {
-      ...pAuth, body: { method: 'bank', accountName: 'Raj Electricals', accountNumber: '918273645500', ifsc: 'HDFC0001234' },
+      ...pAuth,
+      body: {
+        preferred: 'bank',
+        bank: { accountName: 'Raj Electricals', accountNumber: '918273645500', ifsc: 'HDFC0001234' },
+      },
     });
   });
 

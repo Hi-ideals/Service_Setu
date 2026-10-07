@@ -189,14 +189,24 @@ export async function getPayoutMethod(providerId) {
 }
 
 /**
- * Replaces the payout destination wholesale rather than patching fields.
+ * Replaces the payout destinations wholesale rather than patching fields.
  *
- * Switching from UPI to a bank account must not leave the old UPI id behind:
- * a stale half-destination is exactly how money reaches the wrong place. The
- * unused columns are cleared in the same write.
+ * A provider may hold both a UPI id and a bank account - UPI for the quick
+ * ones, bank for the large ones - and `preferred` says which the payout queue
+ * uses. Holding both is the point; the queue still pays to exactly one.
+ *
+ * Still wholesale, though. Whatever arrives is the complete picture: a block
+ * that is absent is cleared, which is how a provider removes a destination
+ * they no longer want. Patching field by field is how a stale half-destination
+ * survives a change, and a half-destination is exactly how money reaches the
+ * wrong place.
  */
 export async function setPayoutMethod(providerId, payload) {
-  const upi = payload.method === 'upi';
+  const { preferred, upi, bank } = payload;
+
+  // One column, two possible sources. The bank block wins because the name on
+  // a bank account has to match it exactly, while on UPI it is decoration.
+  const accountName = bank?.accountName ?? upi?.accountName ?? null;
 
   const row = await queryOne(
     `UPDATE provider_profiles
@@ -211,12 +221,12 @@ export async function setPayoutMethod(providerId, payload) {
       RETURNING id`,
     [
       providerId,
-      payload.method,
-      upi ? payload.upiId : null,
-      payload.accountName ?? null,
-      upi ? null : payload.accountNumber,
-      upi ? null : payload.ifsc.toUpperCase(),
-      upi ? null : payload.bankName ?? null,
+      preferred,
+      upi?.upiId ?? null,
+      accountName,
+      bank?.accountNumber ?? null,
+      bank?.ifsc ? bank.ifsc.toUpperCase() : null,
+      bank?.bankName ?? null,
     ],
   );
 

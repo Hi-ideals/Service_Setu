@@ -377,7 +377,7 @@ test('Phase 13: agencies', async (t) => {
 
     const saved = await request(port, 'PUT', '/api/v1/providers/me/payout-method', {
       ...labour,
-      body: { method: 'upi', upiId: 'ravi' + unique() + '@okaxis' },
+      body: { preferred: 'upi', upi: { upiId: 'ravi' + unique() + '@okaxis' } },
     });
     assert.equal(saved.status, 200, 'and their own payout destination');
   });
