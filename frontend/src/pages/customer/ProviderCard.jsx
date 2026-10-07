@@ -62,11 +62,15 @@ export default function ProviderCard({ provider }) {
                 <StarRating value={provider.rating.average} size="sm" showValue count={provider.rating.count} />
               )}
 
-              {provider.jobsCompleted > 0 && (
-                <span className="text-sm text-ink-500">
-                  {pluralise(provider.jobsCompleted, 'job')} done
-                </span>
-              )}
+              {/* Shown at zero too.
+                  Hiding it left a new provider's card with a gap where every
+                  other card has a figure, which reads as missing information
+                  rather than as a provider who has not started. "0 jobs done"
+                  beside the New badge says the same thing and says it
+                  plainly. */}
+              <span className="text-sm text-ink-500">
+                {pluralise(provider.jobsCompleted ?? 0, 'job')} done
+              </span>
 
               {provider.experienceYears > 0 && (
                 <span className="text-sm text-ink-500">
