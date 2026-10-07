@@ -36,10 +36,25 @@ function request(port, method, path, { body, token } = {}) {
 const signIn = async (port, identifier) =>
   (await request(port, 'POST', '/api/v1/auth/login', { body: { identifier, password: PASSWORD } })).body.data;
 
-function weekdayAt(hour, daysAhead) {
+/**
+ * `weekdaysAhead` weekdays from today, at `hour`.
+ *
+ * Counts weekdays rather than adding calendar days and then skipping forward
+ * off a weekend. The old version pushed Saturday and Sunday onto the following
+ * Monday, so two different offsets collapsed onto the same date - and a second
+ * booking for the same provider at the same hour is refused by the overlap
+ * constraint, exactly as it should be.
+ *
+ * That made the suite fail or pass depending on what day of the week it ran,
+ * which is the worst kind of test: green on the machine you wrote it on.
+ */
+function weekdayAt(hour, weekdaysAhead) {
   const d = new Date();
-  d.setDate(d.getDate() + daysAhead);
-  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+  let remaining = weekdaysAhead;
+  while (remaining > 0) {
+    d.setDate(d.getDate() + 1);
+    if (d.getDay() !== 0 && d.getDay() !== 6) remaining -= 1;
+  }
   d.setHours(hour, 0, 0, 0);
   return d;
 }
