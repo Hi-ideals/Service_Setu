@@ -66,14 +66,15 @@ export async function getTree({ includeInactive = false } = {}) {
     }
   }
 
-  // A parent's provider count is the distinct providers across its subtree.
-  for (const root of roots) {
-    root.providerCount = Math.max(
-      root.providerCount ?? 0,
-      root.children.reduce((sum, c) => sum + (c.providerCount ?? 0), 0),
-    );
-  }
-
+  /**
+   * The count comes from the query, which counts people distinctly across the
+   * subtree.
+   *
+   * It used to be summed here instead, and summing counts a provider once per
+   * service they offer: three electricians offering two services each read as
+   * six on the home page, while search - which counts people - found three.
+   * The same provider is one professional however much work they will take on.
+   */
   return roots;
 }
 

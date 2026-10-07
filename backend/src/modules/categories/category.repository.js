@@ -62,7 +62,19 @@ export function list({ parentId = undefined, includeInactive = false, search = n
   );
 }
 
-/** The whole tree in one round trip, with a live provider count per category. */
+/**
+ * The whole tree in one round trip, with a live provider count per category.
+ *
+ * The count covers the category and its children, counted distinctly. A parent
+ * like Electrical has no providers attached to it directly - they attach to
+ * Wiring, Lighting and so on - so counting the row alone would show zero, and
+ * summing the children in JavaScript counted anyone offering two of them
+ * twice. Three electricians offering two services each read as six on the
+ * home page while search, which counts people, found three.
+ *
+ * One level of nesting is all the catalogue has, and all the tree builder
+ * assembles.
+ */
 export function listTree({ includeInactive = false } = {}) {
   return queryMany(
     `SELECT c.${COLUMNS.trim().split(/,\s*/).join(', c.')},
@@ -71,7 +83,10 @@ export function listTree({ includeInactive = false } = {}) {
                 AND p.is_accepting_bookings AND p.deleted_at IS NULL
             )::int AS provider_count
        FROM service_categories c
-       LEFT JOIN provider_categories pc ON pc.category_id = c.id
+       LEFT JOIN service_categories child
+              ON child.parent_id = c.id AND child.deleted_at IS NULL
+       LEFT JOIN provider_categories pc
+              ON pc.category_id = c.id OR pc.category_id = child.id
        LEFT JOIN provider_profiles p ON p.id = pc.provider_id
       WHERE c.deleted_at IS NULL ${includeInactive ? '' : 'AND c.is_active = TRUE'}
       GROUP BY c.id
