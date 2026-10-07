@@ -116,3 +116,27 @@ export default {
   settingSchemas, settingKeyParam, payoutListSchema, idParamSchema,
   markPaidSchema, markFailedSchema, serviceReportSchema, payoutReportSchema,
 };
+
+// ---------- people directory ----------
+
+export const peopleListSchema = z.object({
+  role: z.enum(['customer', 'provider', 'agency', 'admin']).optional(),
+  status: z.enum(['active', 'suspended', 'deactivated']).optional(),
+  verification: z
+    .enum(['unsubmitted', 'pending', 'info_requested', 'approved', 'rejected', 'suspended'])
+    .optional(),
+  search: z.string().trim().min(1).max(80).optional(),
+  format: z.enum(['json', 'csv']).default('json'),
+  page: z.coerce.number().int().min(1).optional(),
+  // A CSV is the whole filtered set rather than one screen of it, so it takes
+  // a higher ceiling than the page size - with a ceiling all the same, because
+  // an unbounded export is a way to take the database out over HTTP.
+  limit: z.coerce.number().int().min(1).max(5000).optional(),
+});
+
+export const accountStatusSchema = z.object({
+  status: z.enum(['active', 'suspended']),
+  reason: z.string().trim().max(400).optional(),
+});
+
+export const userIdParamSchema = z.object({ id: z.string().uuid() });

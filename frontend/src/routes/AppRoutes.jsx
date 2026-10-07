@@ -51,6 +51,7 @@ const AgencyJobs = lazy(() => import('../pages/agency/Jobs.jsx'));
 const AgencyVerification = lazy(() => import('../pages/agency/Verification.jsx'));
 const AgencyProfile = lazy(() => import('../pages/agency/Profile.jsx'));
 const AdminReports = lazy(() => import('../pages/admin/Reports.jsx'));
+const AdminPeople = lazy(() => import('../pages/admin/People.jsx'));
 const AdminVerification = lazy(() => import('../pages/admin/VerificationQueue.jsx'));
 const AdminCategories = lazy(() => import('../pages/admin/Categories.jsx'));
 const AdminBookings = lazy(() => import('../pages/admin/Bookings.jsx'));
@@ -133,6 +134,7 @@ export default function AppRoutes() {
           <Route path="admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="reports" element={<AdminReports />} />
+            <Route path="people" element={<AdminPeople />} />
             <Route path="verification" element={<AdminVerification />} />
             <Route path="categories" element={<AdminCategories />} />
             <Route path="bookings" element={<AdminBookings />} />

@@ -8,6 +8,7 @@ import settings from '../../services/settings.service.js';
 import * as analytics from './analytics.service.js';
 import * as payouts from './payout.service.js';
 import * as reports from './reports.service.js';
+import * as people from './people.service.js';
 import { settingSchemas } from './admin.validation.js';
 
 // ---------- analytics ----------
@@ -196,8 +197,50 @@ export const listPayouts = asyncHandler(async (req, res) => {
   return paginated(res, result.items, { page, limit, total: result.total });
 });
 
+// ---------- people ----------
+
+export const peopleSummary = asyncHandler(async (req, res) => ok(res, await people.summary()));
+
+export const listPeople = asyncHandler(async (req, res) => {
+  const query = q(req);
+  const { page, limit, offset } = getPagination(query);
+
+  // A CSV is the whole filtered set, so it ignores the page size the screen
+  // uses and takes the explicit limit instead.
+  const window = query.format === 'csv' ? { limit: query.limit ?? 5000, offset: 0 } : { limit, offset };
+  const result = await people.list(query, window);
+
+  if (query.format === 'csv') {
+    return sendReport(res, {
+      format: 'csv',
+      name: 'servicemitra-people',
+      columns: people.PEOPLE_COLUMNS,
+      report: result,
+    });
+  }
+
+  return paginated(res, result.rows, { page, limit, total: result.total });
+});
+
+export const setAccountStatus = asyncHandler(async (req, res) => {
+  const result = await people.setStatus(req.params.id, req.body, req.user.id);
+
+  await record(req, {
+    action: req.body.status === 'suspended' ? AUDIT.ACCOUNT_SUSPENDED : AUDIT.ACCOUNT_RESTORED,
+    entityType: 'user',
+    entityId: req.params.id,
+    after: result,
+    reason: req.body.reason ?? null,
+  });
+
+  return ok(res, result, {
+    message: req.body.status === 'suspended' ? 'Account suspended' : 'Account restored',
+  });
+});
+
 export default {
   dashboard, series, categories, locations, providerPerformance,
   getSettings, updateSetting, payoutPreview, runPayouts, payProvider, listPayouts,
   markPayoutPaid, markPayoutFailed, serviceReport, payoutReport,
+  peopleSummary, listPeople, setAccountStatus,
 };

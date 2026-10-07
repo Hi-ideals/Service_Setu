@@ -35,6 +35,19 @@ router.get('/reports/services', validate({ query: schema.serviceReportSchema }),
 router.get('/reports/payouts', validate({ query: schema.payoutReportSchema }), controller.payoutReport);
 
 // ---------- platform settings ----------
+// ---------- people ----------
+// The directory every other admin screen assumes exists: who is on the
+// platform, whether they are verified, and the one control that stops an
+// account being used at all.
+router.get('/people/summary', controller.peopleSummary);
+router.get('/people', validate({ query: schema.peopleListSchema }), controller.listPeople);
+router.patch(
+  '/people/:id/status',
+  writeLimiter,
+  validate({ params: schema.userIdParamSchema, body: schema.accountStatusSchema }),
+  controller.setAccountStatus,
+);
+
 router.get('/settings', controller.getSettings);
 router.put(
   '/settings/:key',

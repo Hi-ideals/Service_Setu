@@ -2,7 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import clsx from 'clsx';
 import {
   LayoutDashboard, ShieldCheck, Layers, CalendarRange,
-  MessageSquareWarning, Star, Wallet, Settings, FileText,
+  MessageSquareWarning, Star, Wallet, Settings, FileText, Users,
 } from 'lucide-react';
 import AppHeader from './AppHeader.jsx';
 
@@ -12,6 +12,12 @@ const SECTIONS = [
     items: [
       { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
       { to: '/admin/reports', label: 'Reports', icon: FileText },
+    ],
+  },
+  {
+    title: 'People',
+    items: [
+      { to: '/admin/people', label: 'Directory', icon: Users },
     ],
   },
   {

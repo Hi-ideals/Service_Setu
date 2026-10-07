@@ -60,6 +60,8 @@ export const keys = {
   reviews: { mine: ['reviews', 'mine'], pending: ['reviews', 'pending'] },
   disputes: { list: (filters) => ['disputes', filters], detail: (id) => ['disputes', id] },
   admin: {
+    peopleSummary: ['admin', 'people', 'summary'],
+    people: (filters) => ['admin', 'people', filters],
     dashboard: (range) => ['admin', 'analytics', 'dashboard', range],
     series: (range) => ['admin', 'analytics', 'series', range],
     settings: ['admin', 'settings'],

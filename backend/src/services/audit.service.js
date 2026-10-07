@@ -24,6 +24,8 @@ export const AUDIT = Object.freeze({
   REFUND_ISSUED: 'refund.issued',
   DISPUTE_RESOLVED: 'dispute.resolved',
   REVIEW_MODERATED: 'review.moderated',
+  ACCOUNT_SUSPENDED: 'account.suspended',
+  ACCOUNT_RESTORED: 'account.restored',
 });
 
 export async function record(req, { action, entityType, entityId, before = null, after = null, reason = null }) {
