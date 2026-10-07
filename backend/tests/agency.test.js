@@ -268,10 +268,23 @@ test('Phase 13: agencies', async (t) => {
     const after = await queryOne('SELECT verification_status FROM provider_profiles WHERE id = $1', [
       added.body.data.id,
     ]);
-    assert.equal(after.verification_status, 'approved', 'approving the agency approved its person');
+    assert.equal(
+      after.verification_status,
+      'unsubmitted',
+      'approving the agency does not approve its people - each submits their own documents',
+    );
   });
 
-  await t.test('someone added to an approved agency is bookable immediately', async () => {
+  await t.test('someone added to an approved agency still verifies themselves', async () => {
+    /**
+     * Approval is not inherited.
+     *
+     * This used to assert the opposite - that joining an approved agency made
+     * someone bookable at once, because the agency had vouched for them. It
+     * does not any more. Everyone entering a customer's home is checked on
+     * their own Aadhaar and their own photograph, and an agency saying "they
+     * are fine" is not the platform having looked.
+     */
     const res = await request(port, 'POST', '/api/v1/agencies/me/providers', {
       ...agencyA,
       body: {
@@ -283,8 +296,58 @@ test('Phase 13: agencies', async (t) => {
     });
 
     assert.equal(res.status, 201);
-    assert.equal(res.body.data.isBookable, true, 'the agency already carries the approval');
-    assert.equal(res.body.data.verificationStatus, 'approved');
+    assert.equal(res.body.data.isBookable, false, 'an approved employer grants nothing');
+    assert.equal(res.body.data.verificationStatus, 'unsubmitted');
+
+    const row = await queryOne('SELECT verification_status FROM provider_profiles WHERE id = $1', [
+      res.body.data.id,
+    ]);
+    assert.equal(row.verification_status, 'unsubmitted', 'and the database agrees');
+  });
+
+  await t.test('suspending the agency still stops its people working', async () => {
+    /**
+     * The direction that must keep cascading.
+     *
+     * Approval is no longer inherited, but withdrawal still is. Trust granted
+     * individually can be removed collectively: the moment an agency is
+     * suspended is exactly when its people must stop taking bookings under it,
+     * and waiting to review each of them in turn would leave them live in the
+     * meantime.
+     */
+    const agency = await registerAgency('Withdraw');
+
+    const hired = await request(port, 'POST', '/api/v1/agencies/me/providers', {
+      ...agency,
+      body: {
+        fullName: 'Withdrawn Worker',
+        email: 'withdrawn-' + unique() + '@agencytest.local',
+        phone: '9' + String(Date.now()).slice(-9),
+        password: PASSWORD,
+      },
+    });
+    assert.equal(hired.status, 201);
+
+    const agencyRow = await queryOne('SELECT id FROM agencies WHERE user_id = $1', [agency.user.id]);
+
+    // Approved individually, the only way it can happen now.
+    await query(
+      `UPDATE provider_profiles
+          SET verification_status = 'approved', verified_at = NOW(), is_accepting_bookings = TRUE
+        WHERE id = $1`,
+      [hired.body.data.id],
+    );
+
+    const { setAgencyVerification } = await import('../src/modules/kyc/kyc.repository.js');
+    const { withTransaction } = await import('../src/db/pool.js');
+    await withTransaction((tx) => setAgencyVerification(tx, agencyRow.id, { status: 'suspended' }));
+
+    const after = await queryOne(
+      'SELECT verification_status, is_accepting_bookings FROM provider_profiles WHERE id = $1',
+      [hired.body.data.id],
+    );
+    assert.equal(after.verification_status, 'suspended', 'the withdrawal reached them');
+    assert.equal(after.is_accepting_bookings, false, 'and took them offline');
   });
 
   // ------------------------------------------------------------ the boundary

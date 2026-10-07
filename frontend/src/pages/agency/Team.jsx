@@ -107,9 +107,17 @@ export default function Team() {
       {overview && !overview.canOperate && (
         <Alert variant="warning" className="mt-4">
           Your agency is not verified yet, so nobody on your team appears in search. You can keep
-          adding people now — they all go live the moment your agency is approved.
+          adding people in the meantime.
         </Alert>
       )}
+
+      {/* Said once, here, rather than on every row: approval is not inherited
+          from the agency any more, and an agency that adds five people and
+          waits for them to appear in search needs to know why they have not. */}
+      <Alert variant="info" className="mt-4">
+        Everyone on your team is verified individually. Each person signs in, uploads their Aadhaar
+        and a photograph, and can take bookings once an admin has approved them.
+      </Alert>
 
       <Card className="mt-4">
         <CardHeader

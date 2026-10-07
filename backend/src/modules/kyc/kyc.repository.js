@@ -83,6 +83,21 @@ export async function setAgencyVerification(tx, agencyId, { status, adminId = nu
   if (!cascade) return { ...agency, cascaded: 0 };
 
   /**
+   * Approval is never inherited.
+   *
+   * Everyone who enters a customer's home is verified on their own Aadhaar and
+   * their own photograph, whether they came through an agency or on their own.
+   * An agency vouching for someone is not the platform having checked them,
+   * and "the agency said so" is no answer to a customer asking who turned up.
+   *
+   * A downgrade still cascades. If an agency is suspended or rejected, the
+   * people working under it stop taking bookings with it - that direction
+   * removes trust rather than granting it, and the moment it is withdrawn is
+   * exactly when it has to take effect everywhere.
+   */
+  if (status === 'approved') return { ...agency, cascaded: 0 };
+
+  /**
    * Skips anyone with a submission of their own under review.
    *
    * Keyed on whether that provider actually filed something, not on their

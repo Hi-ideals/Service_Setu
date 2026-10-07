@@ -104,16 +104,15 @@ export async function addProvider(agencyId, { fullName, email, phone, password, 
   const passwordHash = await bcrypt.hash(password, env.BCRYPT_ROUNDS);
 
   /**
-   * Inherited, not granted.
+   * Nobody starts verified.
    *
-   * A provider added to an approved agency is bookable immediately, because
-   * the agency vouched for them and an admin approved the agency. If the
-   * agency is not approved yet, the provider waits with it.
+   * A person added to an approved agency used to be bookable immediately, on
+   * the grounds that the agency vouched for them. They now submit their own
+   * Aadhaar and photograph and wait for an admin, like everyone else: the
+   * platform's promise to a customer is that it checked the person who turns
+   * up, not the business that sent them.
    */
-  const inherited =
-    agency.verification_status === VERIFICATION_STATUS.APPROVED
-      ? VERIFICATION_STATUS.APPROVED
-      : VERIFICATION_STATUS.UNSUBMITTED;
+  const startingStatus = VERIFICATION_STATUS.UNSUBMITTED;
 
   const created = await withTransaction(async (tx) => {
     const user = await authRepo.createUser(tx, {
@@ -126,7 +125,7 @@ export async function addProvider(agencyId, { fullName, email, phone, password, 
 
     const profile = await authRepo.createProviderProfile(tx, user.id, {
       agencyId,
-      verificationStatus: inherited,
+      verificationStatus: startingStatus,
     });
 
     if (headline) {
@@ -142,9 +141,10 @@ export async function addProvider(agencyId, { fullName, email, phone, password, 
     title: agency.name + ' has set up your ServiceMitra account',
     body:
       'You can sign in with this email address and the password ' + agency.name +
-      ' gave you. Set your services and working hours to start receiving jobs.',
-    actionLabel: 'Sign in',
-    actionPath: '/signin',
+      ' gave you. Upload your Aadhaar and a photograph to get verified - you ' +
+      'can take bookings once an admin has approved them.',
+    actionLabel: 'Get verified',
+    actionPath: '/provider/verification',
     entityType: 'provider_profile',
     entityId: created.profile.id,
   });
@@ -156,9 +156,9 @@ export async function addProvider(agencyId, { fullName, email, phone, password, 
     email: created.user.email,
     phone: created.user.phone,
     verificationStatus: created.profile.verification_status,
-    // Said plainly, because the difference decides whether this person can
-    // take work today or has to wait for the agency to be approved.
-    isBookable: inherited === VERIFICATION_STATUS.APPROVED,
+    // Always false on creation now: nobody is bookable until they have
+    // uploaded their own documents and an admin has approved them.
+    isBookable: false,
   };
 }
 
