@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { CalendarRange, Search } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CalendarRange, Search, Ban } from 'lucide-react';
 import { api } from '../../lib/api.js';
 import { keys } from '../../lib/queryClient.js';
 import useDebounce from '../../hooks/useDebounce.js';
@@ -14,6 +14,32 @@ import { SkeletonCard } from '../../components/ui/Skeleton.jsx';
 import { money, formatDateTime } from '../../lib/format.js';
 import useDocumentTitle from '../../hooks/useDocumentTitle.js';
 import PageHeader from '../../components/ui/PageHeader.jsx';
+import Button from '../../components/ui/Button.jsx';
+import Modal from '../../components/ui/Modal.jsx';
+import Textarea from '../../components/ui/Textarea.jsx';
+import Alert from '../../components/ui/Alert.jsx';
+import { useToast } from '../../context/ToastContext.jsx';
+
+/**
+ * The states an admin may still cancel out of.
+ *
+ * Mirrors the state machine rather than guessing: a request, an accepted job
+ * and a job already under way can be cancelled; a completed, refunded or
+ * already-cancelled one cannot, and offering a button that the server will
+ * refuse is worse than offering none.
+ *
+ * Cancelling a job in progress is the admin's alone - neither side can do it -
+ * which is the whole reason this control has to exist somewhere.
+ */
+const CANCELLABLE = new Set(['requested', 'accepted', 'in_progress']);
+
+/**
+ * Matches the server's minimum.
+ *
+ * A button that submits and is then refused teaches the person nothing except
+ * to distrust the form.
+ */
+const MIN_REASON = 5;
 
 const FILTERS = {
   all: undefined,
@@ -29,6 +55,22 @@ export default function AdminBookings() {
   const [page, setPage] = useState(1);
   const [term, setTerm] = useState('');
   const search = useDebounce(term, 400);
+  const [cancelling, setCancelling] = useState(null);
+  const [reason, setReason] = useState('');
+  const toast = useToast();
+  const queryClient = useQueryClient();
+
+  const cancelBooking = useMutation({
+    mutationFn: ({ id, why }) => api.post('/bookings/' + id + '/cancel', { reason: why }),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      setCancelling(null);
+      setReason('');
+      toast.success(result?.message ?? 'Booking cancelled');
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: keys.bookings.list({ admin: true, tab, page, search }),
@@ -98,6 +140,9 @@ export default function AdminBookings() {
                       <th scope="col">When</th>
                       <th scope="col">Status</th>
                       <th scope="col" className="text-right">Amount</th>
+                      <th scope="col" className="text-right">
+                        <span className="sr-only">Actions</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-ink-200">
@@ -117,6 +162,19 @@ export default function AdminBookings() {
                         </td>
                         <td className="text-right font-semibold tabular-nums text-ink-900">
                           {money(booking.pricing.final ?? booking.pricing.quoted)}
+                        </td>
+                        <td className="text-right">
+                          {CANCELLABLE.has(booking.status) && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              icon={Ban}
+                              className="whitespace-nowrap text-danger-600 hover:bg-danger-50"
+                              onClick={() => setCancelling(booking)}
+                            >
+                              Cancel
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -147,6 +205,18 @@ export default function AdminBookings() {
                         {money(booking.pricing.final ?? booking.pricing.quoted)}
                       </span>
                     </div>
+
+                    {CANCELLABLE.has(booking.status) && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        icon={Ban}
+                        className="mt-2 text-danger-600 hover:bg-danger-50"
+                        onClick={() => setCancelling(booking)}
+                      >
+                        Cancel booking
+                      </Button>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -162,6 +232,66 @@ export default function AdminBookings() {
         total={meta.total}
         onChange={setPage}
       />
+
+      <Modal
+        open={Boolean(cancelling)}
+        onClose={() => {
+          setCancelling(null);
+          setReason('');
+        }}
+        title="Cancel this booking?"
+      >
+        {cancelling && (
+          <div className="space-y-4">
+            <p className="text-base text-ink-600">
+              <span className="font-mono text-sm">{cancelling.reference}</span>
+              {' — '}
+              <span className="font-medium text-ink-900">{cancelling.category.name}</span>
+              {' for '}
+              {cancelling.customer.name}, with {cancelling.provider.name}.
+            </p>
+
+            {cancelling.status === 'in_progress' && (
+              <Alert variant="warning">
+                This job is already under way. The provider is likely at the address right now, so
+                tell both sides why.
+              </Alert>
+            )}
+
+            <Textarea
+              label="Reason"
+              rows={2}
+              maxLength={300}
+              required
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              hint="At least 5 characters. Sent to the customer and the provider, and recorded in the audit log."
+            />
+
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                className="flex-1"
+                onClick={() => {
+                  setCancelling(null);
+                  setReason('');
+                }}
+              >
+                Keep it
+              </Button>
+              <Button
+                variant="danger"
+                className="flex-1"
+                loading={cancelBooking.isPending}
+                disabled={reason.trim().length < MIN_REASON}
+                onClick={() => cancelBooking.mutate({ id: cancelling.id, why: reason.trim() })}
+              >
+                Cancel booking
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
