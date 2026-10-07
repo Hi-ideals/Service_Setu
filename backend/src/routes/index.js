@@ -20,6 +20,7 @@ import {
   adminRouter as adminReviewRoutes,
 } from '../modules/reviews/review.routes.js';
 import bookingRoutes from '../modules/bookings/booking.routes.js';
+import addressRoutes from '../modules/addresses/address.routes.js';
 import adminRoutes from '../modules/admin/admin.routes.js';
 import {
   paymentRouter,
@@ -47,6 +48,7 @@ router.use('/providers', discoveryRoutes);
 router.use('/kyc', kycRoutes);
 router.use('/admin/kyc', adminKycRoutes);
 router.use('/bookings', bookingRoutes);
+router.use('/addresses', addressRoutes);
 router.use('/payments', paymentRouter);
 router.use('/invoices', invoiceRouter);
 router.use('/earnings', earningsRouter);

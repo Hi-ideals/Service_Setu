@@ -52,6 +52,7 @@ export const keys = {
     tracking: (id) => ['bookings', id, 'tracking'],
     counts: ['bookings', 'counts'],
   },
+  addresses: ['addresses'],
   kyc: { me: ['kyc', 'me'], queue: (filters) => ['admin', 'kyc', filters] },
   payments: { forBooking: (id) => ['payments', 'booking', id] },
   invoices: { list: (filters) => ['invoices', filters], detail: (id) => ['invoices', id] },

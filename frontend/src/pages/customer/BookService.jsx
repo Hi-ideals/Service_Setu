@@ -13,6 +13,7 @@ import Input from '../../components/ui/Input.jsx';
 import Textarea from '../../components/ui/Textarea.jsx';
 import Alert from '../../components/ui/Alert.jsx';
 import Avatar from '../../components/ui/Avatar.jsx';
+import Badge from '../../components/ui/Badge.jsx';
 import { PageLoader } from '../../components/ui/Spinner.jsx';
 import { money, duration, formatDateTime, pluralise } from '../../lib/format.js';
 import useDocumentTitle from '../../hooks/useDocumentTitle.js';
@@ -70,6 +71,15 @@ function Stepper({ current }) {
   );
 }
 
+/**
+ * The sentinel for "type a different address".
+ *
+ * A saved address is identified by its uuid, so any value that cannot be one
+ * works - and a named constant beats an empty string, which already means
+ * "nothing chosen yet".
+ */
+const NEW_ADDRESS = 'new';
+
 export default function BookService() {
   useDocumentTitle('Book a service');
   const { providerId } = useParams();
@@ -91,6 +101,17 @@ export default function BookService() {
   });
   const [description, setDescription] = useState('');
   const [submitError, setSubmitError] = useState(null);
+
+  /**
+   * Which saved address is selected, or the sentinel for typing a new one.
+   *
+   * Empty string means "no saved addresses yet or none chosen"; NEW_ADDRESS
+   * means the customer deliberately wants to type a different one. The two
+   * have to be distinguishable, because the first should preselect the default
+   * once the list arrives and the second must never be overridden by it.
+   */
+  const [addressChoice, setAddressChoice] = useState('');
+  const [saveAddress, setSaveAddress] = useState(true);
 
   const { data: provider, isLoading } = useQuery({
     queryKey: keys.providers.profile(providerId),
@@ -125,6 +146,49 @@ export default function BookService() {
     queryKey: keys.me,
     queryFn: async () => (await api.get('/auth/me')).data,
   });
+
+  const { data: savedAddresses = [] } = useQuery({
+    queryKey: keys.addresses,
+    queryFn: async () => (await api.get('/addresses')).data,
+  });
+
+  /**
+   * Preselect the default address, once.
+   *
+   * Guarded on `addressChoice` being empty so it fires only before the
+   * customer has expressed a preference - otherwise a refetch would drag them
+   * back off the new address they had started typing.
+   */
+  useEffect(() => {
+    if (addressChoice || savedAddresses.length === 0) return;
+    const preferred = savedAddresses.find((a) => a.isDefault) ?? savedAddresses[0];
+    setAddressChoice(preferred.id);
+    setAddress({
+      line: preferred.line,
+      city: preferred.city,
+      state: preferred.state,
+      pincode: preferred.pincode,
+      lat: preferred.latitude ?? null,
+      lng: preferred.longitude ?? null,
+    });
+  }, [savedAddresses, addressChoice]);
+
+  function chooseSaved(saved) {
+    setAddressChoice(saved.id);
+    setAddress({
+      line: saved.line,
+      city: saved.city,
+      state: saved.state,
+      pincode: saved.pincode,
+      lat: saved.latitude ?? null,
+      lng: saved.longitude ?? null,
+    });
+  }
+
+  function chooseNew() {
+    setAddressChoice(NEW_ADDRESS);
+    setAddress({ line: '', city: 'Bidar', state: 'Karnataka', pincode: '', lat: null, lng: null });
+  }
 
   // A provider with exactly one service has nothing to choose, so it is
   // ticked for them.
@@ -180,12 +244,47 @@ export default function BookService() {
     setSlot('');
   }
 
-  function submit() {
+  /**
+   * Saves a newly typed address, if asked.
+   *
+   * Deliberately not allowed to block the booking: the address is a
+   * convenience for next time, and failing to store it is no reason to refuse
+   * a customer who has just chosen a slot. The booking carries its own
+   * snapshot either way.
+   */
+  async function persistAddressIfWanted() {
+    const isNew = savedAddresses.length === 0 || addressChoice === NEW_ADDRESS;
+    if (!isNew || !saveAddress || !address.line || !address.pincode) return undefined;
+
+    try {
+      const { data } = await api.post('/addresses', {
+        label: savedAddresses.length === 0 ? 'Home' : 'Other',
+        line1: address.line,
+        city: address.city,
+        state: address.state,
+        pincode: address.pincode,
+        latitude: address.lat ?? undefined,
+        longitude: address.lng ?? undefined,
+      });
+      queryClient.invalidateQueries({ queryKey: keys.addresses });
+      return data.id;
+    } catch {
+      return undefined;
+    }
+  }
+
+  async function submit() {
     setSubmitError(null);
+    const newlySavedId = await persistAddressIfWanted();
     createBooking.mutate({
       providerId,
       categoryIds,
       scheduledStart: slot,
+      // The snapshot always goes, saved address or not: a booking has to keep
+      // what the address said on the day, even if the customer later edits or
+      // deletes the saved one.
+      addressId:
+        addressChoice && addressChoice !== NEW_ADDRESS ? addressChoice : newlySavedId,
       address: {
         line: address.line,
         city: address.city,
@@ -324,6 +423,72 @@ export default function BookService() {
                     The professional gets your address and phone number only once they accept.
                   </Alert>
 
+                  {savedAddresses.length > 0 && (
+                    <fieldset className="space-y-2">
+                      {/* The heading above already asks the question; this
+                          names the group for a screen reader without saying
+                          the same sentence twice on screen. */}
+                      <legend className="mb-1 text-sm font-medium text-ink-700">
+                        Saved addresses
+                      </legend>
+
+                      {savedAddresses.map((saved) => (
+                        <label
+                          key={saved.id}
+                          className={clsx(
+                            'flex cursor-pointer items-start gap-3 rounded-field border p-3 transition',
+                            addressChoice === saved.id
+                              ? 'border-brand-600 bg-brand-50/60 ring-1 ring-brand-600'
+                              : 'border-ink-200 hover:border-ink-300',
+                          )}
+                        >
+                          <input
+                            type="radio"
+                            name="saved-address"
+                            className="mt-1 h-4 w-4 shrink-0 accent-brand-600"
+                            checked={addressChoice === saved.id}
+                            onChange={() => chooseSaved(saved)}
+                          />
+                          <span className="min-w-0">
+                            <span className="flex items-center gap-2">
+                              <span className="font-medium text-ink-900">{saved.label}</span>
+                              {saved.isDefault && (
+                                <Badge variant="info" size="sm">Default</Badge>
+                              )}
+                            </span>
+                            <span className="mt-0.5 block text-sm text-ink-500">
+                              {saved.line}, {saved.city} {saved.pincode}
+                            </span>
+                          </span>
+                        </label>
+                      ))}
+
+                      <label
+                        className={clsx(
+                          'flex cursor-pointer items-center gap-3 rounded-field border p-3 transition',
+                          addressChoice === NEW_ADDRESS
+                            ? 'border-brand-600 bg-brand-50/60 ring-1 ring-brand-600'
+                            : 'border-ink-200 hover:border-ink-300',
+                        )}
+                      >
+                        <input
+                          type="radio"
+                          name="saved-address"
+                          className="h-4 w-4 shrink-0 accent-brand-600"
+                          checked={addressChoice === NEW_ADDRESS}
+                          onChange={chooseNew}
+                        />
+                        <span className="font-medium text-ink-900">Use a different address</span>
+                      </label>
+                    </fieldset>
+                  )}
+
+                  {/* The fields stay visible when nothing is saved yet, and
+                      when the customer has chosen to type a new one. Hiding
+                      them behind the radio for a first-time customer would
+                      leave the step looking empty. */}
+                  {(savedAddresses.length === 0 || addressChoice === NEW_ADDRESS) && (
+                  <>
                   <Input
                     label="Address"
                     placeholder="House number, street, landmark"
@@ -349,6 +514,18 @@ export default function BookService() {
                       onChange={(e) => setAddress({ ...address, pincode: e.target.value.replace(/\D/g, '') })}
                     />
                   </div>
+
+                  <label className="flex cursor-pointer items-center gap-2.5 text-base text-ink-600">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-brand-600"
+                      checked={saveAddress}
+                      onChange={(e) => setSaveAddress(e.target.checked)}
+                    />
+                    Save this address for next time
+                  </label>
+                  </>
+                  )}
 
                   <Textarea
                     label="Describe the problem"
